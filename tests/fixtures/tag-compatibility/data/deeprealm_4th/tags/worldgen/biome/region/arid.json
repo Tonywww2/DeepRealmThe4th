@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "deep_realm_verification:tag_only",
+    {"id": "uninstalled_test_mod:missing_biome", "required": false}
+  ]
+}

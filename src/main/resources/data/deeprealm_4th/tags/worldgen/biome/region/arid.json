@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "#deeprealm_4th:region/arid/desert",
+    "#deeprealm_4th:region/arid/badlands",
+    "#deeprealm_4th:region/arid/plateau",
+    "#deeprealm_4th:region/arid/mountain",
+    "#deeprealm_4th:region/arid/river"
+  ]
+}

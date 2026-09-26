@@ -1,0 +1,31 @@
+modLoader = "javafml"
+loaderVersion = "${loaderRange}"
+license = "${license}"
+
+[[mods]]
+modId = "${id}"
+version = "${version}"
+displayName = "${name}"
+authors = "${authors}"
+description = '''${description}'''
+
+[[dependencies.${id}]]
+modId = "forge"
+mandatory = true
+versionRange = "${forgeRange}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${id}]]
+modId = "minecraft"
+mandatory = true
+versionRange = "${minecraftRange}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${id}]]
+modId = "curios"
+mandatory = true
+versionRange = "${curiosRange}"
+ordering = "NONE"
+side = "BOTH"

@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "#deeprealm_4th:region/infernal/nether",
+    "#deeprealm_4th:region/infernal/basalt"
+  ]
+}

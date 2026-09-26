@@ -1,0 +1,6 @@
+{
+  "replace": false,
+  "values": [
+    {"id": "example_mod:your_desert", "required": false}
+  ]
+}

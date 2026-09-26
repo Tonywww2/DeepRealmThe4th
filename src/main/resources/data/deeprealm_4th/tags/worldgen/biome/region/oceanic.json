@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "#deeprealm_4th:region/oceanic/coast",
+    "#deeprealm_4th:region/oceanic/ocean",
+    "#deeprealm_4th:region/oceanic/deep",
+    "#deeprealm_4th:region/oceanic/island"
+  ]
+}

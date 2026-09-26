@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Deep Realm: The Forth resources",
+    "pack_format": ${packFormat}
+  }
+}
+

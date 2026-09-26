@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:beach",
+    "minecraft:stony_shore",
+    {"id":"biomesoplenty:dune_beach","required":false},
+    {"id":"terralith:gravel_beach","required":false}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "#deeprealm_4th:region/temperate_tropical/plains",
+    "#deeprealm_4th:region/temperate_tropical/forest",
+    "#deeprealm_4th:region/temperate_tropical/jungle",
+    "#deeprealm_4th:region/temperate_tropical/mountain"
+  ]
+}

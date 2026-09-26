@@ -1,0 +1,109 @@
+{
+  "type": "deeprealm_4th:fourth_layer",
+  "generator": {
+    "type": "deeprealm_4th:spiral",
+    "biome_source": {
+      "type": "deeprealm_4th:spiral",
+      "generation_version": 5,
+      "parameters": {
+        "center_x": 8,
+        "center_z": 8,
+        "core_radius": 24,
+        "plunge_radius": 56,
+        "twist": 1.44,
+        "land_fraction": 0.75,
+        "rotation": 0,
+        "reference_radius": 256,
+        "radial_scale": 430
+      },
+      "pools": {
+        "hydrology/frozen_river": {
+          "biomes": "#deeprealm_4th:hydrology/frozen_river",
+          "fallback": "minecraft:frozen_river"
+        },
+        "void": {
+          "biomes": [
+            "minecraft:the_void"
+          ],
+          "fallback": "minecraft:the_void"
+        },
+        "arid/desert": {
+          "biomes": "#deeprealm_4th:region/arid/desert",
+          "fallback": "minecraft:desert"
+        },
+        "arid/badlands": {
+          "biomes": "#deeprealm_4th:region/arid/badlands",
+          "fallback": "minecraft:badlands"
+        },
+        "arid/plateau": {
+          "biomes": "#deeprealm_4th:region/arid/plateau",
+          "fallback": "minecraft:wooded_badlands"
+        },
+        "arid/mountain": {
+          "biomes": "#deeprealm_4th:region/arid/mountain",
+          "fallback": "minecraft:eroded_badlands"
+        },
+        "arid/river": {
+          "biomes": "#deeprealm_4th:region/arid/river",
+          "fallback": "minecraft:river"
+        },
+        "infernal/nether": {
+          "biomes": "#deeprealm_4th:region/infernal/nether",
+          "fallback": "minecraft:nether_wastes"
+        },
+        "infernal/basalt": {
+          "biomes": "#deeprealm_4th:region/infernal/basalt",
+          "fallback": "minecraft:basalt_deltas"
+        },
+        "temperate_tropical/plains": {
+          "biomes": "#deeprealm_4th:region/temperate_tropical/plains",
+          "fallback": "minecraft:plains"
+        },
+        "temperate_tropical/forest": {
+          "biomes": "#deeprealm_4th:region/temperate_tropical/forest",
+          "fallback": "minecraft:forest"
+        },
+        "temperate_tropical/jungle": {
+          "biomes": "#deeprealm_4th:region/temperate_tropical/jungle",
+          "fallback": "minecraft:jungle"
+        },
+        "temperate_tropical/mountain": {
+          "biomes": "#deeprealm_4th:region/temperate_tropical/mountain",
+          "fallback": "minecraft:stony_peaks"
+        },
+        "oceanic/coast": {
+          "biomes": "#deeprealm_4th:region/oceanic/coast",
+          "fallback": "minecraft:beach"
+        },
+        "oceanic/ocean": {
+          "biomes": "#deeprealm_4th:region/oceanic/ocean",
+          "fallback": "minecraft:ocean"
+        },
+        "oceanic/deep": {
+          "biomes": "#deeprealm_4th:region/oceanic/deep",
+          "fallback": "minecraft:deep_ocean"
+        },
+        "oceanic/island": {
+          "biomes": "#deeprealm_4th:region/oceanic/island",
+          "fallback": "minecraft:plains"
+        },
+        "arid": {
+          "biomes": "#deeprealm_4th:region/arid",
+          "fallback": "minecraft:desert"
+        },
+        "infernal": {
+          "biomes": "#deeprealm_4th:region/infernal",
+          "fallback": "minecraft:nether_wastes"
+        },
+        "temperate_tropical": {
+          "biomes": "#deeprealm_4th:region/temperate_tropical",
+          "fallback": "minecraft:plains"
+        },
+        "oceanic": {
+          "biomes": "#deeprealm_4th:region/oceanic",
+          "fallback": "minecraft:beach"
+        }
+      }
+    }
+  }
+}

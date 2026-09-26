@@ -1,0 +1,38 @@
+# Gradle and Stonecutter outputs
+.gradle/
+.gradle-user-home/
+/build/
+/buildSrc/build/
+/versions/*/build/
+**/out/
+**/bin/
+**/.gradle/
+
+# Local Minecraft runs and generated diagnostics
+**/run/
+**/logs/
+**/crash-reports/
+**/debug/
+*.log
+*.hprof
+hs_err_pid*
+replay_pid*
+
+# IDE and operating system state
+.idea/
+.vscode/
+**/.eclipse/
+*.iml
+*.ipr
+*.iws
+.settings/
+.classpath
+.project
+.DS_Store
+Thumbs.db
+
+# Local credentials and overrides
+.env
+.env.*
+!.env.example
+*.local.properties
