@@ -1,5 +1,6 @@
 package com.tony.deeprealmtheforth.compat.kubejs;
 
+import com.tony.deeprealmtheforth.astral.AstralAttributeIds;
 import com.tony.deeprealmtheforth.astral.FillerDefinition;
 import com.tony.deeprealmtheforth.astral.ScoreRules;
 import com.tony.deeprealmtheforth.astral.ScoreType;
@@ -18,14 +19,10 @@ public final class AstralRules {
 
     public static FillerDefinition.ScoreRule whenFillerCount(String itemId, int minimum,
             ScoreType target, double amount) {
-        if (itemId == null || !itemId.matches("[a-z0-9_.-]+:[a-z0-9_/.-]+")) {
-            throw new IllegalArgumentException("Expected a namespaced item ID, got: " + itemId);
-        }
-        if (minimum < 1) throw new IllegalArgumentException("Minimum filler count must be positive");
-        return ScoreRules.when(context -> context.count(itemId) >= minimum, target, amount);
+        return ScoreRules.countAtLeast(itemId, minimum, target, amount);
     }
 
-    /** Adds the score once when the named filler is in an open orthogonal neighbor. */
+    /** Adds the score once when the named filler is in an active orthogonal neighbor. */
     public static FillerDefinition.ScoreRule whenAdjacent(String itemId,
             ScoreType target, double amount) {
         return ScoreRules.adjacent(itemId, target, amount);
@@ -34,6 +31,50 @@ public final class AstralRules {
     public static FillerDefinition.ScoreRule perScore(ScoreType source,
             ScoreType target, double multiplier) {
         return ScoreRules.perScore(source, target, multiplier);
+    }
+
+    public static FillerDefinition.ScoreRule percentOf(ScoreType source,
+            ScoreType target, double rate, double cap) {
+        return ScoreRules.percentOf(source, target, rate, cap);
+    }
+
+    public static FillerDefinition.ScoreRule percentWhenAdjacent(String itemId,
+            ScoreType source, ScoreType target, double rate, double cap) {
+        return ScoreRules.percentWhenAdjacent(itemId, source, target, rate, cap);
+    }
+
+    public static FillerDefinition.ScoreRule percentWhenCountAtLeast(String itemId, int minimum,
+            ScoreType source, ScoreType target, double rate, double cap) {
+        return ScoreRules.percentWhenCountAtLeast(itemId, minimum, source, target, rate, cap);
+    }
+
+    public static FillerDefinition.ScoreRule percentWhenAdjacentTagAtLeast(String tagId, int minimum,
+            ScoreType source, ScoreType target, double rate) {
+        return ScoreRules.percentWhenAdjacentTagAtLeast(tagId, minimum, source, target, rate);
+    }
+
+    public static FillerDefinition.ScoreRule whenExperienceLevelAbove(int level,
+            ScoreType target, double amount) {
+        return ScoreRules.whenExperienceLevelAbove(level, target, amount);
+    }
+
+    public static FillerDefinition.ScoreRule whenHealthAbove(double health,
+            ScoreType target, double amount) {
+        return ScoreRules.whenHealthAbove(health, target, amount);
+    }
+
+    public static FillerDefinition.ScoreRule whenHealthAtMost(double health,
+            ScoreType target, double amount) {
+        return ScoreRules.whenHealthAtMost(health, target, amount);
+    }
+
+    public static FillerDefinition.ScoreRule whenFoodAtLeast(int food,
+            ScoreType target, double amount) {
+        return ScoreRules.whenFoodAtLeast(food, target, amount);
+    }
+
+    public static FillerDefinition.ScoreRule whenNightVision(ScoreType target, double amount) {
+        return ScoreRules.whenNightVision(target, amount);
     }
 
     /** Deducts a fraction of the source phase score and adds it to the target at a rate. */
@@ -52,6 +93,10 @@ public final class AstralRules {
         return ScoreRules.attributePerScore(source, attributeId, multiplier);
     }
 
+    public static FillerDefinition.MedalRule attributePerAllScores(String attributeId, double perPoint) {
+        return ScoreRules.attributePerAllScores(attributeId, perPoint);
+    }
+
     /** Multiplies final attribute value; 0.01 means +1% per score point. */
     public static FillerDefinition.MedalRule attributeMultiplyTotalPerScore(ScoreType source,
             String attributeId, double fractionPerPoint) {
@@ -61,7 +106,7 @@ public final class AstralRules {
     /** The built-in warrior medal's logarithmic final-attack multiplier. */
     public static FillerDefinition.MedalRule warriorMedal() {
         return (context, scores, output) -> output.multiplyTotal(
-                "minecraft:generic.attack_damage",
+                AstralAttributeIds.ATTACK_DAMAGE,
                 WarriorMedalFormula.attackFraction(scores.get(ScoreType.STRENGTH)));
     }
 

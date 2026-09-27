@@ -1,6 +1,7 @@
 package com.tony.deeprealmtheforth.astral;
 
 import java.util.List;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -9,15 +10,22 @@ import net.minecraft.world.level.Level;
 
 /** A filler with translated description lines and shared activation/conflict hints. */
 public class AstralFillerItem extends Item {
-    private final List<String> descriptionKeys;
+    private final List<Component> descriptionLines;
 
     /**
      * Each key is a full translation key, in display order. Subclasses may override
      * {@link #appendAstralTooltip} to add live values or other context.
      */
     public AstralFillerItem(Properties properties, String... descriptionKeys) {
+        this(properties, java.util.Arrays.stream(descriptionKeys)
+                .map(key -> (Component) Component.translatable(key).withStyle(ChatFormatting.GRAY))
+                .toList());
+    }
+
+    /** Translated components may contain score names styled with {@link AstralScoreColors}. */
+    public AstralFillerItem(Properties properties, List<Component> descriptionLines) {
         super(properties);
-        this.descriptionKeys = List.of(descriptionKeys);
+        this.descriptionLines = List.copyOf(descriptionLines);
     }
 
     //? if forge {
@@ -36,6 +44,6 @@ public class AstralFillerItem extends Item {
     *///?}
 
     protected void appendAstralTooltip(ItemStack stack, List<Component> tooltip) {
-        AstralTooltips.appendFiller(stack, tooltip, descriptionKeys);
+        AstralTooltips.appendFillerComponents(stack, tooltip, descriptionLines);
     }
 }

@@ -19,12 +19,12 @@ public abstract class VersionedChunkGenerator extends ChunkGenerator {
     }
 
     protected abstract MapCodec<? extends ChunkGenerator> mapCodec();
-    protected abstract Codec<? extends ChunkGenerator> legacyCodec();
+    protected abstract Codec<? extends ChunkGenerator> forgeCodec();
     protected abstract CompletableFuture<ChunkAccess> generateTerrain(ChunkAccess chunk);
 
     //? if <1.21 {
     @Override
-    protected final Codec<? extends ChunkGenerator> codec() { return legacyCodec(); }
+    protected final Codec<? extends ChunkGenerator> codec() { return forgeCodec(); }
 
     @Override
     public final CompletableFuture<ChunkAccess> fillFromNoise(Executor executor, Blender blender,

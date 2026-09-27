@@ -9,25 +9,18 @@ $sources=@(foreach($part in @('worldgen/terrain','worldgen/layout','worldgen/hyd
     Get-ChildItem -LiteralPath (Join-Path $package $part) -Filter '*.java' | Select-Object -ExpandProperty FullName
 })
 $sources+=@('worldgen/biome/BiomeClimate.java','worldgen/biome/BaseBiomeResolver.java','travel/LandingSearch.java') | ForEach-Object {Join-Path $package $_}
-$sources+=Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src/test/java/com/tony/deeprealmtheforth/worldgen') -Filter '*.java' | Select-Object -ExpandProperty FullName
+$sources+=@('CurrentTerrainVerification.java','GlobalHydrologyVerification.java') | ForEach-Object {
+    Join-Path $projectRoot "src/test/java/com/tony/deeprealmtheforth/worldgen/$_"
+}
 # Intentionally compiles only dependency-free worldgen code. This does NOT validate
 # Minecraft integration, loader APIs, unrelated modules, or create a release jar.
 & (Join-Path $javaRoot 'bin/javac.exe') --release 17 -encoding UTF-8 -d $classes $sources
 if($LASTEXITCODE -ne 0){throw 'Standalone worldgen compilation failed'}
 $classpath=$classes+';'+(Join-Path $projectRoot 'src/main/resources')
 $out=Join-Path $projectRoot "build/reports/standalone-worldgen/$Loader"
-$oldClimate=Join-Path $projectRoot "run/$Loader-server/hydrology-prototype/climate.tsv"
 $climate=Join-Path $projectRoot "run/$Loader-server/biome-compat-v5/climate.tsv"
-$runs=@(
-    @('TerrainVerification',"$out/legacy"),
-    @('GlobalHydrologyVerification',$oldClimate,"$out/v3",'3'),
-    @('GlobalHydrologyVerification',$oldClimate,"$out/v4",'4'),
-    @('MarineAridVerification',$climate,"$out/v5-marine"),
-    @('GlobalHydrologyVerification',$climate,"$out/v5-hydrology",'5')
-)
-foreach($entry in $runs) {
-    Write-Output "Standalone $Loader / $($entry[0]) / $($entry[-1])"
-    & (Join-Path $javaRoot 'bin/java.exe') -Xmx1G '-Djava.awt.headless=true' -cp $classpath ("com.tony.deeprealmtheforth.worldgen."+$entry[0]) $entry[1..($entry.Count-1)]
-    if($LASTEXITCODE -ne 0){throw "Worldgen verification failed: $($entry[0])"}
-}
+& (Join-Path $javaRoot 'bin/java.exe') -Xmx1G -cp $classpath 'com.tony.deeprealmtheforth.worldgen.CurrentTerrainVerification'
+if($LASTEXITCODE -ne 0){throw 'Current terrain verification failed'}
+& (Join-Path $javaRoot 'bin/java.exe') -Xmx1G -cp $classpath 'com.tony.deeprealmtheforth.worldgen.GlobalHydrologyVerification' $climate "$out/hydrology"
+if($LASTEXITCODE -ne 0){throw 'Current hydrology verification failed'}
 Write-Output 'STANDALONE_WORLDGEN_OK (not a release-build result)'

@@ -1,5 +1,6 @@
 package com.tony.deeprealmtheforth.astral;
 
+import com.tony.deeprealmtheforth.platform.items.AstralItemRegistration;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Optional;
@@ -11,6 +12,8 @@ import net.minecraft.world.entity.player.Inventory;
 
 /** Textured by simple cells so addon layouts can change width and height. */
 public final class AstralScreen extends AbstractContainerScreen<AstralMenu> {
+    private static final int SCORE_PANEL_WIDTH = 124;
+    private static final int SCORE_PANEL_GAP = 8;
     private float layoutScale = 1;
 
     public AstralScreen(AstralMenu menu, Inventory inventory, Component title) {
@@ -26,8 +29,10 @@ public final class AstralScreen extends AbstractContainerScreen<AstralMenu> {
     @Override
     protected void init() {
         super.init();
+        // Reserve matching space on the left so the container stays centered.
+        int sideRoom = SCORE_PANEL_GAP + SCORE_PANEL_WIDTH + 4;
         layoutScale = Math.max(0.1f, Math.min(1f, Math.min(
-                width / (float) (imageWidth + 8), height / (float) (imageHeight + 8))));
+                width / (float) (imageWidth + sideRoom * 2), height / (float) (imageHeight + 8))));
         leftPos = Math.round((width / layoutScale - imageWidth) / 2);
         topPos = Math.round((height / layoutScale - imageHeight) / 2);
     }
@@ -38,9 +43,10 @@ public final class AstralScreen extends AbstractContainerScreen<AstralMenu> {
         graphics.fill(leftPos + 3, topPos + 3, leftPos + imageWidth - 3,
                 topPos + imageHeight - 3, 0xff33344d);
         ContainerLayout layout = menu.layout();
+        int gridX = leftPos + AstralMenu.gridX(layout);
         for (int y = 0; y < layout.height(); y++) {
             for (int x = 0; x < layout.width(); x++) {
-                int left = leftPos + 8 + x * 18;
+                int left = gridX + x * 18;
                 int top = topPos + 18 + y * 18;
                 graphics.fill(left - 1, top - 1, left + 17, top + 17,
                         layout.isOpen(x, y) ? 0xff8e82a8 : 0xff51475b);
@@ -54,15 +60,20 @@ public final class AstralScreen extends AbstractContainerScreen<AstralMenu> {
             for (int col = 0; col < 9; col++) drawPlayerCell(graphics, playerX + col * 18, playerY + row * 18);
         }
         for (int col = 0; col < 9; col++) drawPlayerCell(graphics, playerX + col * 18, playerY + 58);
-        int scoreX = leftPos + 16 + layout.width() * 18;
+        int panelX = leftPos + imageWidth + SCORE_PANEL_GAP;
+        int panelY = topPos + 8;
+        graphics.fill(panelX, panelY, panelX + SCORE_PANEL_WIDTH, panelY + 116, 0xff172034);
+        graphics.fill(panelX + 3, panelY + 3, panelX + SCORE_PANEL_WIDTH - 3,
+                panelY + 113, 0xff33344d);
+        int scoreX = panelX + 8;
         graphics.drawString(font, Component.translatable("screen.deeprealm_4th.scores"),
-                scoreX, topPos + 18, 0xfff0daaa, false);
+                scoreX, panelY + 8, 0xfff0daaa, false);
         for (ScoreType type : ScoreType.values()) {
             String value = String.format(Locale.ROOT, "%.2f", menu.score(type));
             graphics.drawString(font, Component.translatable("score.deeprealm_4th." + type.id()),
-                    scoreX, topPos + 34 + type.ordinal() * 14, 0xffe4e0ee, false);
-            graphics.drawString(font, value, scoreX + 72,
-                    topPos + 34 + type.ordinal() * 14, 0xffa9dfea, false);
+                    scoreX, panelY + 26 + type.ordinal() * 14, AstralScoreColors.argb(type), false);
+            graphics.drawString(font, value, panelX + SCORE_PANEL_WIDTH - 8 - font.width(value),
+                    panelY + 26 + type.ordinal() * 14, AstralScoreColors.argb(type), false);
         }
     }
 
@@ -94,11 +105,33 @@ public final class AstralScreen extends AbstractContainerScreen<AstralMenu> {
                         default -> null;
                     };
         }
-        if (key != null && hoveredSlot != null && hoveredSlot.hasItem()) {
+        boolean medalPreview = key == null && hoveredMenuIndex >= 0
+                && hoveredMenuIndex < menu.layout().size() && hoveredSlot != null
+                && (hoveredSlot.getItem().is(AstralItemRegistration.WARRIOR_MEDAL.get())
+                    || hoveredSlot.getItem().is(AstralItemRegistration.WAYFARER_MEDAL.get())
+                    || hoveredSlot.getItem().is(AstralItemRegistration.WARDEN_MEDAL.get()));
+        if ((key != null || medalPreview) && hoveredSlot != null && hoveredSlot.hasItem()) {
             // Keep the item's own tooltip visible and add the cell state as its last line.
             var lines = new ArrayList<>(getTooltipFromContainerItem(hoveredSlot.getItem()));
-            lines.add(Component.translatable("screen.deeprealm_4th." + key)
-                    .withStyle(ChatFormatting.RED));
+            if (key != null) {
+                lines.add(Component.translatable("screen.deeprealm_4th." + key)
+                        .withStyle(ChatFormatting.RED));
+            }
+            if (medalPreview) {
+                if (hoveredSlot.getItem().is(AstralItemRegistration.WARRIOR_MEDAL.get())) {
+                    double percent = WarriorMedalFormula.attackFraction(menu.score(ScoreType.STRENGTH)) * 100;
+                    lines.add(Component.translatable("tooltip.deeprealm_4th.warrior_medal.preview",
+                            AstralTooltips.number(percent)).withStyle(ChatFormatting.GOLD));
+                } else if (hoveredSlot.getItem().is(AstralItemRegistration.WAYFARER_MEDAL.get())) {
+                    double percent = AstralMedalFormulas.movementFraction(menu.score(ScoreType.AGILITY)) * 100;
+                    lines.add(Component.translatable("tooltip.deeprealm_4th.wayfarer_medal.preview",
+                            AstralTooltips.number(percent)).withStyle(ChatFormatting.GOLD));
+                } else {
+                    double health = AstralMedalFormulas.maxHealthBonus(menu.score(ScoreType.CONSTITUTION));
+                    lines.add(Component.translatable("tooltip.deeprealm_4th.warden_medal.preview",
+                            AstralTooltips.number(health)).withStyle(ChatFormatting.GOLD));
+                }
+            }
             graphics.renderTooltip(font, lines, Optional.empty(), scaledX, scaledY);
         } else {
             renderTooltip(graphics, scaledX, scaledY);

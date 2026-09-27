@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "deeprealm_4th:item/cluster_mirror_gem"
+  }
+}

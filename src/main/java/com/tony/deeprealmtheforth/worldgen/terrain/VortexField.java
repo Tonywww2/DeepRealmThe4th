@@ -7,9 +7,7 @@ import com.tony.deeprealmtheforth.worldgen.layout.SpiralParameters;
 public final class VortexField {
     private final long seed;
     private final SpiralParameters p;
-    private final boolean detailedEdges;
-    public VortexField(long seed, SpiralParameters p) { this(seed,p,false); }
-    public VortexField(long seed, SpiralParameters p,boolean detailedEdges) { this.seed = seed; this.p = p;this.detailedEdges=detailedEdges; }
+    public VortexField(long seed, SpiralParameters p) { this.seed = seed; this.p = p; }
 
     /**
      * Relief needs bounded spatial shear: multiplying noisy ANGLES by radius
@@ -46,7 +44,7 @@ public final class VortexField {
         boolean band = within < width;
         double edge = radius * Math.min(band ? within : within - width,
                 band ? width - within : Math.PI / 2 - within) / Math.sqrt(1 + p.twist() * p.twist());
-        if(detailedEdges && band && edge<40 && radius>p.plungeRadius()+144) {
+        if(band && edge<40 && radius>p.plungeRadius()+144) {
             // Fixed-block erosion only in the outer strip. Interior land cannot tear.
             double detail=9+12*SeededNoise.fractal(seed^817731,x,z,43,3)
                     +5*SeededNoise.fractal(seed^329197,x,z,15,2);

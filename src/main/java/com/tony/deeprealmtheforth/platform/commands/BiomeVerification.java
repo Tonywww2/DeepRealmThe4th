@@ -40,7 +40,7 @@ public final class BiomeVerification {
         missing.removeAll(found.keySet());
         // A narrow cold river cannot be proved unreachable by a 28-block local grid.
         // Search native-cold H0 sites first, then query the actual river overlay.
-        if (missing.contains("minecraft:frozen_river") && generator.terrain().generationVersion() >= 3) {
+        if (missing.contains("minecraft:frozen_river")) {
             searchCold:
             for (int radius : new int[]{4096, 8192, 12288, 16384, 24576}) {
                 double[] center = generator.terrain().layout().armCenter(5, radius);

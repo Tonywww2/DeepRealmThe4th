@@ -27,7 +27,6 @@ import net.minecraft.world.phys.Vec3;
 public final class FourthLayerCommands {
     public static final ResourceKey<Level> DIMENSION = ResourceKey.create(Registries.DIMENSION, PlatformIds.id("fourth_layer"));
     private static final String RETURN_KEY = "deeprealm_4th_return";
-    private static final String LEGACY_RETURN_KEY = "deep_realm_the_forth_return";
 
     private FourthLayerCommands() {}
 
@@ -57,6 +56,7 @@ public final class FourthLayerCommands {
                 .then(Commands.literal("verifyclimate").executes(c -> ClimateVerification.run(c.getSource(), level(c.getSource()), generator(level(c.getSource())))))
                 .then(Commands.literal("verifybiomes").executes(c -> BiomeVerification.run(c.getSource(), level(c.getSource()), generator(level(c.getSource())))))
                 .then(Commands.literal("verifycompat").executes(c -> BiomeCompatVerification.run(c.getSource(), level(c.getSource()), generator(level(c.getSource())))))
+                .then(Commands.literal("verifyclay").executes(c -> ClayMountainVerification.run(c.getSource(), level(c.getSource()), generator(level(c.getSource())))))
                 .then(Commands.literal("verifystructures")
                         .then(Commands.argument("structure", com.mojang.brigadier.arguments.StringArgumentType.word())
                                 .executes(c -> StructureVerification.run(c.getSource(), level(c.getSource()), generator(level(c.getSource())),
@@ -70,7 +70,7 @@ public final class FourthLayerCommands {
 
     private static ServerLevel level(CommandSourceStack source) throws CommandSyntaxException {
         ServerLevel level = source.getServer().getLevel(DIMENSION);
-        if (level == null) throw error("深境四层未加载，请检查数据包和服务器日志。");
+        if (level == null) throw translatedError("unloaded");
         return level;
     }
 
@@ -78,9 +78,8 @@ public final class FourthLayerCommands {
     private static int updateWater(CommandSourceStack source, int radius) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         ServerLevel level = source.getLevel();
-        if (!level.dimension().equals(DIMENSION)) throw error("请在深境四层的河流附近执行补更新。");
+        if (!level.dimension().equals(DIMENSION)) throw translatedError("updatewater.wrong_dimension");
         SpiralChunkGenerator generator = generator(level);
-        if (generator.terrain().generationVersion() < 3) throw error("补更新仅支持生成版本 3 及以上的主干支流水系。");
         int scheduled = 0, skipped = 0;
         var center = player.chunkPosition();
         for (int cx = center.x-radius; cx <= center.x+radius; cx++) for (int cz = center.z-radius; cz <= center.z+radius; cz++) {
@@ -102,41 +101,41 @@ public final class FourthLayerCommands {
             }
         }
         int count=scheduled, missing=skipped;
-        source.sendSuccess(() -> Component.literal("已安排 "+count+" 个河水更新；跳过 "+missing
-                +" 个未加载区块。未重写地形；平坦水面可能按原版规则保持静止。"), false);
+        source.sendSuccess(() -> Component.translatable("command.deeprealm_4th.updatewater.success",
+                count, missing), false);
         return scheduled;
     }
 
     private static SpiralChunkGenerator generator(ServerLevel level) throws CommandSyntaxException {
         if (level.getChunkSource().getGenerator() instanceof SpiralChunkGenerator spiral) return spiral;
-        throw error("此维度未使用螺旋生成器。");
+        throw translatedError("wrong_generator");
     }
 
     private static int enter(CommandSourceStack source, int arm, int radius) throws CommandSyntaxException {
-        if ((arm & 1) == 0) throw error("2、4、6、8 股是虚空；请选择 1、3、5、7。");
+        if ((arm & 1) == 0) throw translatedError("enter.void_arm");
         ServerPlayer player = source.getPlayerOrException();
         ServerLevel target = level(source);
         double[] center = generator(target).terrain().layout().armCenter(arm, radius);
         BlockPos landing = findSurface(target, (int) Math.floor(center[0]), (int) Math.floor(center[1]), 32);
-        if (landing == null) throw error("此位置附近没有安全陆地，请更换半径。");
+        if (landing == null) throw translatedError("enter.no_landing");
         CompoundTag origin = new CompoundTag();
         origin.putString("dimension", player.level().dimension().location().toString());
         origin.putDouble("x", player.getX()); origin.putDouble("y", player.getY()); origin.putDouble("z", player.getZ());
         origin.putFloat("yaw", player.getYRot()); origin.putFloat("pitch", player.getXRot());
         boolean remember = !player.level().dimension().equals(DIMENSION);
-        if (!teleport(player, target, landing, player.getYRot(), player.getXRot())) throw error("传送被取消。");
+        if (!teleport(player, target, landing, player.getYRot(), player.getXRot()))
+            throw translatedError("enter.cancelled");
         if (remember) player.getPersistentData().put(RETURN_KEY, origin);
-        source.sendSuccess(() -> Component.literal("已进入深境四层第 " + arm + " 股，落点 " + landing.toShortString()), false);
+        source.sendSuccess(() -> Component.translatable("command.deeprealm_4th.enter.success",
+                arm, landing.toShortString()), false);
         return 1;
     }
 
     private static int leave(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (!player.level().dimension().equals(DIMENSION)) throw error("你当前不在深境四层。");
+        if (!player.level().dimension().equals(DIMENSION)) throw translatedError("return.wrong_dimension");
         CompoundTag savedData = player.getPersistentData();
-        CompoundTag origin = savedData.contains(RETURN_KEY)
-                ? savedData.getCompound(RETURN_KEY)
-                : savedData.getCompound(LEGACY_RETURN_KEY);
+        CompoundTag origin = savedData.getCompound(RETURN_KEY);
         ServerLevel target = source.getServer().overworld();
         BlockPos preferred = target.getSharedSpawnPos();
         float yaw = player.getYRot(), pitch = 0;
@@ -150,11 +149,11 @@ public final class FourthLayerCommands {
             }
         }
         BlockPos landing = safe(target, preferred) ? preferred : findSurface(target, preferred.getX(), preferred.getZ(), 32);
-        if (landing == null) throw error("原位置被占用，附近也没有安全落点；返回记录已保留。");
-        if (!teleport(player, target, landing, yaw, pitch)) throw error("传送被取消，返回记录已保留。");
+        if (landing == null) throw translatedError("return.no_landing");
+        if (!teleport(player, target, landing, yaw, pitch)) throw translatedError("return.cancelled");
         savedData.remove(RETURN_KEY);
-        savedData.remove(LEGACY_RETURN_KEY);
-        source.sendSuccess(() -> Component.literal("已返回，落点 " + landing.toShortString()), false);
+        source.sendSuccess(() -> Component.translatable("command.deeprealm_4th.return.success",
+                landing.toShortString()), false);
         return 1;
     }
 
@@ -246,5 +245,9 @@ public final class FourthLayerCommands {
 
     private static CommandSyntaxException error(String message) {
         return new SimpleCommandExceptionType(Component.literal(message)).create();
+    }
+
+    private static CommandSyntaxException translatedError(String key) {
+        return new SimpleCommandExceptionType(Component.translatable("command.deeprealm_4th." + key)).create();
     }
 }

@@ -36,3 +36,12 @@ Thumbs.db
 .env.*
 !.env.example
 *.local.properties
+
+# Editor backups and Python scratch files
+__pycache__/
+*.py[cod]
+*.bak
+*.orig
+*.rej
+*.tmp
+*~

@@ -24,8 +24,8 @@ public final class WorldgenRegistration {
     private static final DeferredRegister<Codec<? extends BiomeSource>> BIOMES =
             DeferredRegister.create(Registries.BIOME_SOURCE, DeepRealmTheForth.MOD_ID);
     static {
-        GENERATORS.register("spiral", () -> SpiralChunkGenerator.LEGACY_CODEC);
-        BIOMES.register("spiral", () -> SpiralBiomeSource.LEGACY_CODEC);
+        GENERATORS.register("spiral", () -> SpiralChunkGenerator.CODEC);
+        BIOMES.register("spiral", () -> SpiralBiomeSource.CODEC);
     }
     //?} else {
     /*private static final DeferredRegister<MapCodec<? extends ChunkGenerator>> GENERATORS =

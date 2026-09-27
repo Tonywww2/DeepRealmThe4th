@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "deeprealm_4th:item/etched_step_gem"
+  }
+}

@@ -3,21 +3,17 @@ package com.tony.deeprealmtheforth.worldgen.terrain;
 import com.tony.deeprealmtheforth.worldgen.layout.SpiralParameters;
 import java.util.*;
 
-/** Finite branching ridge masses. The two-argument constructor preserves the V2 experiment. */
+/** Finite branching ridge masses. */
 public final class NaturalRelief {
     private static final int CELL = 640;
     private final long seed;
     private final SpiralParameters parameters;
-    private final boolean world;
-    private final boolean detailedEdges;
     private final ThreadLocal<Map<Long, List<Ridge>>> cache = ThreadLocal.withInitial(() ->
             new LinkedHashMap<>(128, .75f, true) {
                 @Override protected boolean removeEldestEntry(Map.Entry<Long,List<Ridge>> e) { return size() > 128; }
             });
-    public NaturalRelief(long seed, SpiralParameters parameters) { this(seed, parameters, false); }
-    public NaturalRelief(long seed, SpiralParameters parameters, boolean world) { this(seed,parameters,world,false); }
-    public NaturalRelief(long seed, SpiralParameters parameters, boolean world,boolean detailedEdges) {
-        this.seed = seed; this.parameters = parameters; this.world = world;this.detailedEdges=detailedEdges;
+    public NaturalRelief(long seed, SpiralParameters parameters) {
+        this.seed = seed; this.parameters = parameters;
     }
     private record Ridge(double ax, double az, double bx, double bz, double ah, double bh,
                          double leftWidth, double rightWidth) {}
@@ -25,13 +21,12 @@ public final class NaturalRelief {
     public Relief sample(double x, double z, boolean arid) {
         double wx = x + 38 * SeededNoise.fractal(seed ^ 73921, x, z, 360, 2);
         double wz = z + 38 * SeededNoise.fractal(seed ^ 31913, x, z, 360, 2);
-        double upland = world ? 32 * SeededNoise.fractal(seed ^ 51279, wx, wz, 850, 2)
-                : 20 * SeededNoise.fractal(seed ^ 51279, wx, wz, 410, 3);
+        double upland = 32 * SeededNoise.fractal(seed ^ 51279, wx, wz, 850, 2);
         double hills = 9.5 * SeededNoise.fractal(seed ^ 71139, wx, wz, 106, 3)
                 + 1.8 * SeededNoise.fractal(seed ^ 12481, x, z, 28, 2);
-        double flank=detailedEdges?1+.22*SeededNoise.fractal(seed^82193,x,z,83,2)
-                +.075*SeededNoise.fractal(seed^78917,x,z,29,2):1;
-        if(detailedEdges)hills+=1.5*SeededNoise.fractal(seed^928771,x,z,13,2);
+        double flank=1+.22*SeededNoise.fractal(seed^82193,x,z,83,2)
+                +.075*SeededNoise.fractal(seed^78917,x,z,29,2);
+        hills+=1.5*SeededNoise.fractal(seed^928771,x,z,13,2);
         int gx = (int)Math.floor(wx / CELL), gz = (int)Math.floor(wz / CELL);
         double mountain = 0;
         Map<Long,List<Ridge>> memo = cache.get();

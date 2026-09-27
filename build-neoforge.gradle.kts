@@ -94,6 +94,8 @@ tasks {
         }
         exclude("META-INF/mods.toml")
         exclude("data/curios/tags/items/**")
+        exclude("data/deeprealm_4th/recipes/**")
+        exclude("data/deeprealm_4th/tags/items/astral/**")
     }
 
     withType<Jar>().configureEach {
@@ -108,111 +110,34 @@ java {
 
 val verifyTerrain by tasks.registering(JavaExec::class) {
     group = "verification"
-    description = "Checks spiral geometry and fluid containment; renders terrain previews."
+    description = "Checks the current spiral terrain and ecology."
     dependsOn(tasks.testClasses)
     classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "com.tony.deeprealmtheforth.worldgen.TerrainVerification"
+    mainClass = "com.tony.deeprealmtheforth.worldgen.CurrentTerrainVerification"
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
-    args(rootProject.layout.buildDirectory.dir("reports/terrain-neoforge").get().asFile.absolutePath)
-    systemProperty("java.awt.headless", "true")
 }
 
-tasks.check { dependsOn(verifyTerrain) }
+val verifyAstral by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Checks astral layouts, percentage scores, and medal formulas."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "com.tony.deeprealmtheforth.astral.AstralCoreVerification"
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
+}
+
+tasks.check { dependsOn(verifyTerrain, verifyAstral) }
 
 // Geometry assertions are executed by verifyTerrain, not a JUnit discovery engine.
 tasks.test { failOnNoDiscoveredTests = false }
 
-val benchmarkTerrain by tasks.registering(JavaExec::class) {
+val verifyHydrology by tasks.registering(JavaExec::class) {
     group = "verification"
-    description = "Fixed-workload terrain timing, fingerprints and JFR; not client FPS."
-    dependsOn(tasks.testClasses)
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "com.tony.deeprealmtheforth.worldgen.TerrainPerformanceBenchmark"
-    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
-    args(rootProject.file("run/neoforge-server/hydrology-prototype/climate.tsv").absolutePath,
-        rootProject.layout.buildDirectory.dir("reports/terrain-performance/neoforge").get().asFile.absolutePath,
-        providers.gradleProperty("benchmarkLabel").getOrElse("current"),
-        providers.gradleProperty("generationVersion").getOrElse("3"))
-    maxHeapSize = "1G"
-}
-
-val verifyNaturalHydrology by tasks.registering(JavaExec::class) {
-    group = "verification"
-    description = "Offline v2 natural relief and asymmetric bank morphology; preserves live worldgen."
-    dependsOn(tasks.testClasses)
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "com.tony.deeprealmtheforth.worldgen.NaturalHydrologyVerification"
-    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
-    args(rootProject.file("run/neoforge-server/hydrology-prototype/climate.tsv").absolutePath,
-        rootProject.layout.buildDirectory.dir("reports/hydrology-v2/neoforge").get().asFile.absolutePath)
-    systemProperty("java.awt.headless", "true")
-}
-
-val verifyGlobalHydrology by tasks.registering(JavaExec::class) {
-    group = "verification"
-    description = "Verifies complete world-coordinate catchments and integrated river columns."
-    dependsOn(tasks.testClasses)
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "com.tony.deeprealmtheforth.worldgen.GlobalHydrologyVerification"
-    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
-    args(rootProject.file("run/neoforge-server/hydrology-prototype/climate.tsv").absolutePath,
-        rootProject.layout.buildDirectory.dir("reports/hydrology-v3/neoforge").get().asFile.absolutePath)
-    systemProperty("java.awt.headless", "true")
-}
-
-val verifyDetailedWorldgen by tasks.registering(JavaExec::class) {
-    group = "verification"
-    dependsOn(tasks.testClasses)
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "com.tony.deeprealmtheforth.worldgen.GlobalHydrologyVerification"
-    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
-    args(rootProject.file("run/neoforge-server/hydrology-prototype/climate.tsv").absolutePath,
-        rootProject.layout.buildDirectory.dir("reports/hydrology-v4/neoforge").get().asFile.absolutePath,"4")
-    systemProperty("java.awt.headless", "true")
-}
-
-val verifyEdgeDetails by tasks.registering(JavaExec::class) {
-    group = "verification"
-    dependsOn(tasks.testClasses)
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "com.tony.deeprealmtheforth.worldgen.EdgeDetailVerification"
-    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
-    args(rootProject.file("run/neoforge-server/hydrology-prototype/climate.tsv").absolutePath,
-        rootProject.layout.buildDirectory.dir("reports/hydrology-v4/neoforge").get().asFile.absolutePath)
-    systemProperty("java.awt.headless", "true")
-}
-
-val verifyMarineArid by tasks.registering(JavaExec::class) {
-    group = "verification"
-    dependsOn(tasks.testClasses)
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "com.tony.deeprealmtheforth.worldgen.MarineAridVerification"
-    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
-    args(rootProject.file("run/neoforge-server/hydrology-prototype/climate.tsv").absolutePath,
-        rootProject.layout.buildDirectory.dir("reports/marine-v5/neoforge").get().asFile.absolutePath)
-    systemProperty("java.awt.headless", "true")
-}
-
-val verifyMarineHydrology by tasks.registering(JavaExec::class) {
-    group = "verification"
+    description = "Checks the current watershed against an exported registry climate."
     dependsOn(tasks.testClasses)
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass = "com.tony.deeprealmtheforth.worldgen.GlobalHydrologyVerification"
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
     args(rootProject.file("run/neoforge-server/biome-compat-v5/climate.tsv").absolutePath,
-        rootProject.layout.buildDirectory.dir("reports/hydrology-v5/neoforge").get().asFile.absolutePath,"5")
-    systemProperty("java.awt.headless", "true")
-}
-
-// Offline only: first export the post-startup registry using /fourthlayer verifyclimate.
-val verifyHydrologyPrototype by tasks.registering(JavaExec::class) {
-    group = "verification"
-    description = "Checks finite drainage prototype and draws honest algorithm previews; NOT production worldgen."
-    dependsOn(tasks.testClasses)
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "com.tony.deeprealmtheforth.worldgen.HydrologyPrototypeVerification"
-    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
-    args(rootProject.file("run/neoforge-server/hydrology-prototype/climate.tsv").absolutePath,
-        rootProject.layout.buildDirectory.dir("reports/hydrology-prototype/neoforge").get().asFile.absolutePath)
-    systemProperty("java.awt.headless", "true")
+        rootProject.layout.buildDirectory.dir("reports/hydrology-current/neoforge").get().asFile.absolutePath)
 }

@@ -1,6 +1,7 @@
 param(
     [string]$SourceDirectory = (Join-Path $PSScriptRoot '..\art\source\item'),
-    [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\src\main\resources\assets\deeprealm_4th\textures\item')
+    [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\src\main\resources\assets\deeprealm_4th\textures\item'),
+    [string[]]$ItemIds = @()
 )
 
 Add-Type -AssemblyName System.Drawing
@@ -96,9 +97,17 @@ function Simplify-PixelPalette([System.Drawing.Bitmap]$sprite) {
     }
 }
 
-Get-ChildItem -LiteralPath $SourceDirectory -Filter '*.png' -File | ForEach-Object {
+Get-ChildItem -LiteralPath $SourceDirectory -Filter '*.png' -File |
+    Where-Object { $ItemIds.Count -eq 0 -or $ItemIds -contains $_.BaseName } |
+    ForEach-Object {
     $source = [System.Drawing.Bitmap]::new($_.FullName)
     try {
+        if ($source.Width -eq 16 -and $source.Height -eq 16) {
+            # Hand-authored pixel sprites are already final resolution. Rescaling them would blur shapes.
+            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $OutputDirectory $_.Name) -Force
+            Write-Output "$($_.Name): 16x16 source copied"
+            return
+        }
         $left = $source.Width
         $top = $source.Height
         $right = -1

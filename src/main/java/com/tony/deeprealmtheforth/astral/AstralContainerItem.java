@@ -1,7 +1,10 @@
 package com.tony.deeprealmtheforth.astral;
 
+import com.google.common.collect.Multimap;
 import java.util.List;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -12,6 +15,13 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
+
+//? if forge {
+import java.util.UUID;
+//?} else {
+/*import net.minecraft.core.Holder;
+import net.minecraft.resources.ResourceLocation;
+*///?}
 
 /** Extend this item to define a container with a custom layout or insertion rule. */
 public class AstralContainerItem extends Item implements ICurioItem {
@@ -65,11 +75,27 @@ public class AstralContainerItem extends Item implements ICurioItem {
 
     @Override
     public void curioTick(SlotContext slotContext, ItemStack stack) {
-        AstralCurioAttributes.tick(slotContext, stack);
+        AstralCurioAttributes.refresh(slotContext, stack);
     }
 
     @Override
     public void onUnequip(SlotContext slotContext, ItemStack newStack, ItemStack stack) {
-        AstralCurioAttributes.remove(slotContext);
+        if (!slotContext.entity().level().isClientSide && newStack.getItem() != stack.getItem()) {
+            AstralCurioAttributes.clearSnapshot(stack);
+        }
     }
+
+    //? if forge {
+    @Override
+    public Multimap<Attribute, AttributeModifier> getAttributeModifiers(
+            SlotContext slotContext, UUID slotId, ItemStack stack) {
+        return AstralCurioAttributes.modifiers(slotContext, slotId, stack);
+    }
+    //?} else {
+    /*@Override
+    public Multimap<Holder<Attribute>, AttributeModifier> getAttributeModifiers(
+            SlotContext slotContext, ResourceLocation slotId, ItemStack stack) {
+        return AstralCurioAttributes.modifiers(slotContext, slotId, stack);
+    }
+    *///?}
 }

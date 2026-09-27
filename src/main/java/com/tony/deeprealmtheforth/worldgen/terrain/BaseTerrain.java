@@ -5,10 +5,7 @@ import com.tony.deeprealmtheforth.worldgen.layout.SpiralParameters;
 import com.tony.deeprealmtheforth.worldgen.biome.BiomeClimate;
 import static com.tony.deeprealmtheforth.worldgen.terrain.TerrainProfile.*;
 
-/**
- * River-free H0 model. Both the legacy generator and experimental drainage read
- * these exact equations; this class never calls the final generator or river network.
- */
+/** River-free H0 model shared by generation and drainage. */
 public final class BaseTerrain {
     private final long seed;
     private final SpiralLayout layout;
@@ -17,7 +14,6 @@ public final class BaseTerrain {
     private final NaturalRelief natural;
     private final MarineRelief marine;
     private final AridRelief aridRelief;
-    private final int version;
     private final ThreadLocal<Memo> memo=ThreadLocal.withInitial(Memo::new);
     private static final class Memo {
         final long[] keys=new long[8192];
@@ -27,31 +23,18 @@ public final class BaseTerrain {
     private static long key(int x,int z){return ((long)x<<32)^(z&0xffffffffL);}
     private static int slot(int x,int z){return (int)SeededNoise.hash(9193,x,z)&8191;}
     public BaseTerrain(long seed, SpiralParameters parameters) {
-        this(seed, parameters, 1);
-    }
-    private BaseTerrain(long seed, SpiralParameters parameters, int version) {
-        this.version=version;
         this.seed = seed; layout = new SpiralLayout(parameters);
-        field = new VortexField(seed, parameters,version>=4); biomes = new BiomeClimate(seed,version>=4);
-        natural = version > 1 ? new NaturalRelief(seed, parameters, version >= 3,version>=4) : null;
-        marine=version>=5?new MarineRelief(seed):null;
-        aridRelief=version>=5?new AridRelief(seed):null;
-    }
-    /** Explicit opt-in, used only by offline tests. Default/serialized generators remain legacy. */
-    public static BaseTerrain naturalPrototype(long seed, SpiralParameters parameters) {
-        return new BaseTerrain(seed, parameters, 2);
-    }
-    public static BaseTerrain naturalWorld(long seed, SpiralParameters parameters) { return new BaseTerrain(seed, parameters, 3); }
-    public static BaseTerrain naturalWorld(long seed, SpiralParameters parameters,int version) {
-        if(version!=3&&version!=4&&version!=5)throw new IllegalArgumentException("Natural world version must be 3, 4 or 5");
-        return new BaseTerrain(seed,parameters,version);
+        field = new VortexField(seed, parameters); biomes = new BiomeClimate(seed);
+        natural = new NaturalRelief(seed, parameters);
+        marine = new MarineRelief(seed);
+        aridRelief = new AridRelief(seed);
     }
     /** Macro H0 components only: small surface hummocks are not independent drainage basins. */
     public double drainageHeight(int x, int z) {
         var p=field.sample(x+.5,z+.5);
-        if(natural==null||!p.land()||(p.arm()!=1&&p.arm()!=5))return shape(x,z).top();
+        if(!p.land()||(p.arm()!=1&&p.arm()!=5))return shape(x,z).top();
         var candidate=natural.sample(x+.5,z+.5,p.arm()==1);
-        return layout.baseHeight(p.radius())+(aridRelief!=null&&p.arm()==1
+        return layout.baseHeight(p.radius())+(p.arm()==1
                 ?aridRelief.sample(x+.5,z+.5,candidate).drainage():candidate.drainage());
     }
     public SpiralLayout layout() { return layout; }
@@ -60,17 +43,12 @@ public final class BaseTerrain {
     public record Shape(VortexField.Point point, double u, double v, double fade,
                         double top, int water, Fluid fluid, Theme theme, long variant, double beach) {}
     public Column sample(int x, int z) {
-        if(natural!=null) {
-            Shape s=shape(x,z);Memo m=memo.get();int i=slot(x,z);
-            if(m.columns[i]==null)m.columns[i]=finish(x,z,s,s.top(),s.water(),s.fluid(),s.theme(),s.variant(),Double.POSITIVE_INFINITY);
-            return m.columns[i];
-        }
-        Shape s = shape(x, z);
-        return finish(x, z, s, s.top(), s.water(), s.fluid(), s.theme(), s.variant(), Double.POSITIVE_INFINITY);
+        Shape s=shape(x,z);Memo m=memo.get();int i=slot(x,z);
+        if(m.columns[i]==null)m.columns[i]=finish(x,z,s,s.top(),s.water(),s.fluid(),s.theme(),s.variant(),Double.POSITIVE_INFINITY);
+        return m.columns[i];
     }
 
     public Shape shape(int x, int z) {
-        if(natural==null)return calculateShape(x,z);
         Memo m=memo.get();long key=key(x,z);int i=slot(x,z);
         if(m.shapes[i]!=null&&m.keys[i]==key)return m.shapes[i];
         Shape s=calculateShape(x,z);m.keys[i]=key;m.shapes[i]=s;m.columns[i]=null;return s;
@@ -83,15 +61,14 @@ public final class BaseTerrain {
         double rim = layout.parameters().plungeRadius();
         double fade = SpiralLayout.smooth(rim, rim + 110, p.radius())
                 * SpiralLayout.smooth(1.5, 22, p.edgeDistance());
-        if(version>=4 && (p.arm()==1||p.arm()==5) && p.radius()>=rim+144) {
-            // Fully natural region: the old relief is blended out entirely. Do not
-            // evaluate its many noise fields merely to subtract it again below.
+        if((p.arm()==1||p.arm()==5) && p.radius()>=rim+144) {
+            // Fully natural region: skip inner-rim relief fields outside their blend range.
             var candidate=natural.sample(x+.5,z+.5,p.arm()==1);
             double top=layout.baseHeight(p.radius())+3*SeededNoise.fractal(seed^1951,x,z,18,3)+fade*candidate.height();
             double moisture=SeededNoise.sample(seed^883,u,v,210)+.24*SeededNoise.sample(seed^510,u,v,55);
             Theme theme=p.arm()==1?(moisture>.05?Theme.BADLANDS:Theme.DESERT)
                     :candidate.mountain()>30?Theme.MOUNTAIN:moisture<-.23?Theme.PLAINS:moisture>.28?Theme.JUNGLE:Theme.FOREST;
-            if(aridRelief!=null&&p.arm()==1) {
+            if(p.arm()==1) {
                 var dry=aridRelief.sample(x+.5,z+.5,candidate);
                 top+=fade*(dry.height()-candidate.height());
                 if(dry.kind()!=null)theme=dry.kind();
@@ -166,52 +143,23 @@ public final class BaseTerrain {
             case 5 -> theme = mountain > .48 ? Theme.MOUNTAIN : moisture < -.23 ? Theme.PLAINS
                     : moisture > .28 ? Theme.JUNGLE : Theme.FOREST;
             case 7 -> {
-                if(marine!=null) {
-                    var sea=marine.sample(x+.5,z+.5);
-                    double warp=38*SeededNoise.fractal(seed^1491,x,z,85,3)
-                            *SpiralLayout.smooth(rim+24,rim+80,p.radius());
-                    double blend=SpiralLayout.smooth(rim+24,rim+145,p.radius()+warp);
-                    top+=(sea.height()-top)*blend;beach=sea.beach();
-                    theme=top>=SEA_LEVEL?(beach>.5?Theme.COAST:Theme.ISLAND)
-                            :top<SEA_LEVEL-24?Theme.DEEP_OCEAN:Theme.OCEAN;
-                    if(blend<.05)theme=Theme.COAST;
-                    else if(top<SEA_LEVEL){water=SEA_LEVEL;fluid=Fluid.WATER;}
-                    break;
-                }
-                // Mostly world-space continents: coves and promontories no longer
-                // inherit the same stretched spiral contour at every scale.
-                double ix = wx + 42 * SeededNoise.fractal(seed ^ 65391, x, z, 170, 2);
-                double iz = wz + 42 * SeededNoise.fractal(seed ^ 18751, x, z, 170, 2);
-                double island = .76 * SeededNoise.fractal(seed ^ 32181, ix, iz, 210, 3)
-                        + .24 * SeededNoise.fractal(seed ^ 4198, ix, iz, 85, 2);
-                double inland = (island - .06) * 170;
-                double coastWarp = 50 * SeededNoise.fractal(seed ^ 1491, x, z, 85, 3)
-                        * SpiralLayout.smooth(rim + 24, rim + 80, p.radius());
-                double oceanBlend = SpiralLayout.smooth(rim + 24, rim + 145, p.radius() + coastWarp);
-                double width = SurfaceTransitions.beachWidth(seed, x, z);
-                double seabed = inland < 0 ? SEA_LEVEL + .55 * inland
-                        : SEA_LEVEL + .12 * inland + .46 * Math.max(0, inland - width)
-                        * SpiralLayout.smooth(width, width + 40, inland);
-                top += (seabed - top) * oceanBlend;
-                beach = SurfaceTransitions.beach(seed, x, z, Math.max(inland, (top - SEA_LEVEL) / .20));
-                if (oceanBlend < .05) {
-                    theme = Theme.COAST; // Dry cliff rim; no fixed-radius seabed jump.
-                } else {
-                    if (top >= SEA_LEVEL) {
-                        theme = beach > .5 ? Theme.COAST : Theme.ISLAND;
-                    } else {
-                        theme = top < SEA_LEVEL - 24 ? Theme.DEEP_OCEAN : Theme.OCEAN;
-                        water = SEA_LEVEL; fluid = Fluid.WATER;
-                    }
-                }
+                var sea=marine.sample(x+.5,z+.5);
+                double warp=38*SeededNoise.fractal(seed^1491,x,z,85,3)
+                        *SpiralLayout.smooth(rim+24,rim+80,p.radius());
+                double blend=SpiralLayout.smooth(rim+24,rim+145,p.radius()+warp);
+                top+=(sea.height()-top)*blend;beach=sea.beach();
+                theme=top>=SEA_LEVEL?(beach>.5?Theme.COAST:Theme.ISLAND)
+                        :top<SEA_LEVEL-24?Theme.DEEP_OCEAN:Theme.OCEAN;
+                if(blend<.05)theme=Theme.COAST;
+                else if(top<SEA_LEVEL){water=SEA_LEVEL;fluid=Fluid.WATER;}
             }
             default -> throw new IllegalStateException("Even arms must be void");
         }
-        if (natural != null && (p.arm() == 1 || p.arm() == 5)) {
+        if (p.arm() == 1 || p.arm() == 5) {
             var candidate = natural.sample(x + .5, z + .5, arid);
             double height = layout.baseHeight(p.radius() + Math.max(0, cliffWarp)) + rimDetail + fade * candidate.height();
             double transition = SpiralLayout.smooth(rim + 24, rim + 144, p.radius());
-            if(aridRelief!=null&&arid) {
+            if(arid) {
                 var dry=aridRelief.sample(x+.5,z+.5,candidate);
                 height+=fade*(dry.height()-candidate.height());
                 if(transition>.9&&dry.kind()!=null)theme=dry.kind();

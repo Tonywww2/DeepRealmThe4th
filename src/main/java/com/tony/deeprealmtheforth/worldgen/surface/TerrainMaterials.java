@@ -9,8 +9,13 @@ import net.minecraft.world.level.block.state.BlockState;
 public final class TerrainMaterials {
     private TerrainMaterials() {}
 
-    public static BlockState at(TerrainProfile.Column c,int y,int x,int z,long seed,int version) {
-        if(version>=5&&c.land()&&!c.shore()&&y>=c.bottom()&&y<=c.top()) {
+    public static BlockState at(TerrainProfile.Column c,int y,int x,int z,long seed) {
+        return at(c,y,x,z,seed,false);
+    }
+
+    /** Biome membership is resolved once per column by the generator, never once per block. */
+    public static BlockState at(TerrainProfile.Column c,int y,int x,int z,long seed,boolean clayMountain) {
+        if(c.land()&&!c.shore()&&y>=c.bottom()&&y<=c.top()) {
             int depth=c.top()-y;
             if(c.arm()==7&&depth<4) {
                 double patch=SeededNoise.fractal(seed^58139,x,z,61,3)+.24*SeededNoise.fractal(seed^87931,x,z,19,2);
@@ -22,10 +27,16 @@ public final class TerrainMaterials {
                 if(c.beach()<.20&&patch>.02)return Blocks.STONE.defaultBlockState();
             }
         }
-        return at(c,y,x,z,seed);
+        var materialTheme=clayMountain&&supportsClayMountain(c)
+                ?TerrainProfile.Theme.BADLANDS:c.theme();
+        return at(c,y,x,z,seed,materialTheme);
     }
 
-    public static BlockState at(TerrainProfile.Column c, int y, int x, int z, long seed) {
+    public static boolean supportsClayMountain(TerrainProfile.Column c) {
+        return c.land()&&c.arm()==1&&!c.wet()&&!c.shore()&&c.theme()==TerrainProfile.Theme.ARID_MOUNTAIN;
+    }
+
+    private static BlockState at(TerrainProfile.Column c, int y, int x, int z, long seed,TerrainProfile.Theme materialTheme) {
         if (!c.land() || y < c.bottom() || y > c.surface()) return Blocks.AIR.defaultBlockState();
         if (y > c.top()) return (c.fluid() == TerrainProfile.Fluid.LAVA ? Blocks.LAVA : Blocks.WATER).defaultBlockState();
         int depth = c.top() - y;
@@ -42,7 +53,7 @@ public final class TerrainMaterials {
             return (sediment == 2 ? Blocks.CLAY : sediment == 1 ? depth == 0 ? Blocks.SAND : Blocks.SANDSTONE
                     : Blocks.GRAVEL).defaultBlockState();
         }
-        return switch (c.theme()) {
+        return switch (materialTheme) {
             case DESERT -> (depth == 0 ? Blocks.SAND : depth < 6 ? Blocks.SANDSTONE : Blocks.STONE).defaultBlockState();
             case BADLANDS, PLATEAU -> (depth == 0 ? Blocks.RED_SAND : depth < 4 ? Blocks.RED_SANDSTONE
                     : Math.floorMod(y, 12) < 3 ? Blocks.ORANGE_TERRACOTTA

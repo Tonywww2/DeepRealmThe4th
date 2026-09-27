@@ -23,9 +23,9 @@ public final class SpiralBiomeSource extends VersionedBiomeSource {
     public static final MapCodec<SpiralBiomeSource> MAP_CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             WorldgenCodecs.PARAMETERS.optionalFieldOf("parameters", SpiralParameters.DEFAULT).forGetter(s -> s.parameters),
             Codec.unboundedMap(Codec.STRING, BiomePool.CODEC).fieldOf("pools").forGetter(s -> s.pools),
-            Codec.intRange(1, 5).optionalFieldOf("generation_version", 1).forGetter(s -> s.generationVersion)
+            Codec.intRange(5, 5).fieldOf("generation_version").forGetter(s -> s.generationVersion)
     ).apply(i, SpiralBiomeSource::new));
-    public static final Codec<SpiralBiomeSource> LEGACY_CODEC = MAP_CODEC.codec();
+    public static final Codec<SpiralBiomeSource> CODEC = MAP_CODEC.codec();
 
     private final SpiralParameters parameters;
     private final Map<String, BiomePool> pools;
@@ -35,7 +35,7 @@ public final class SpiralBiomeSource extends VersionedBiomeSource {
     private volatile TerrainProfile terrain;
 
     public SpiralBiomeSource(SpiralParameters parameters, Map<String, BiomePool> pools, int generationVersion) {
-        if (generationVersion != 1 && generationVersion != 3 && generationVersion != 4 && generationVersion != 5) throw new IllegalArgumentException("Unsupported world generation version " + generationVersion);
+        if (generationVersion != 5) throw new IllegalArgumentException("Only generation version 5 is supported");
         this.parameters = parameters;
         this.generationVersion = generationVersion;
         this.pools = Map.copyOf(pools);
@@ -49,8 +49,7 @@ public final class SpiralBiomeSource extends VersionedBiomeSource {
 
     public synchronized void bindSeed(long seed) {
         if (terrain != null && terrain.seed() != seed) throw new IllegalStateException("Generator reused across world seeds");
-        if (terrain == null) terrain = generationVersion == 1 ? new TerrainProfile(seed, parameters)
-                : new TerrainProfile(seed, parameters, BiomeClimateAdapter.capture(this),generationVersion);
+        if (terrain == null) terrain = new TerrainProfile(seed, parameters, BiomeClimateAdapter.capture(this));
     }
 
     public TerrainProfile terrain() {
@@ -90,7 +89,7 @@ public final class SpiralBiomeSource extends VersionedBiomeSource {
     protected MapCodec<? extends BiomeSource> mapCodec() { return MAP_CODEC; }
 
     @Override
-    protected Codec<? extends BiomeSource> legacyCodec() { return LEGACY_CODEC; }
+    protected Codec<? extends BiomeSource> forgeCodec() { return CODEC; }
 
     @Override
     protected Stream<Holder<Biome>> collectPossibleBiomes() {
@@ -116,7 +115,7 @@ public final class SpiralBiomeSource extends VersionedBiomeSource {
     public Map<String, List<Holder<Biome>>> resolvedExtras() { return extraBiomes.get(); }
 
     private Holder<Biome> select(TerrainProfile.Column column, int x, int z) {
-        if (generationVersion >= 3 && column.theme() == TerrainProfile.Theme.RIVER && column.wet()) {
+        if (column.theme() == TerrainProfile.Theme.RIVER && column.wet()) {
             Holder<Biome> original = BaseBiomeResolver.select(terrain().biomes(), terrain().baseTerrain().sample(x, z),
                     x, z, resolved.get(), extraBiomes.get(), h -> h.unwrapKey().orElseThrow().location().toString());
             if (BiomeClimateAdapter.snowClimate(original.value(), new net.minecraft.core.BlockPos(x, column.fluidLevel(), z))) {

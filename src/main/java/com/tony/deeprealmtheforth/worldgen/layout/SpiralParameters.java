@@ -4,7 +4,6 @@ package com.tony.deeprealmtheforth.worldgen.layout;
 public record SpiralParameters(double centerX, double centerZ, double coreRadius,
                                double plungeRadius, double twist, double rotation,
                                double referenceRadius, double radialScale, double landFraction) {
-    public static final SpiralParameters LEGACY = new SpiralParameters(8, 8, 16, 64, 0.72, 0, 256, 430, 0.5);
     // Diameters: seven chunks for the central cliff, three chunks for the open core.
     public static final SpiralParameters DEFAULT = new SpiralParameters(8, 8, 24, 56, 1.44, 0, 256, 430, 0.75);
     public static final int MIN_Y = -64;

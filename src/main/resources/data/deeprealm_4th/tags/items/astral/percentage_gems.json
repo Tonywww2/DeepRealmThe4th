@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "deeprealm_4th:vein_amplitude_gem",
+    "deeprealm_4th:wandering_shadow_gem",
+    "deeprealm_4th:folded_reflection_gem",
+    "deeprealm_4th:linked_vein_gem",
+    "deeprealm_4th:cluster_mirror_gem",
+    "deeprealm_4th:looped_trace_gem"
+  ]
+}

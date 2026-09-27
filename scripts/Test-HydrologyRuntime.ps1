@@ -1,18 +1,17 @@
 param(
     [Parameter(Mandatory=$true)][ValidateSet('forge','neoforge')][string]$Loader,
     [Parameter(Mandatory=$true)][ValidateSet('Climate','Geometry','Biomes','Compat','Ecology','Prepare','Check','Cleanup','Structures')][string]$Phase,
-    [ValidateSet(3,4,5)][int]$GenerationVersion=4,
     [ValidateSet('default','compat')][string]$Profile='default'
 )
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path $PSScriptRoot -Parent
 $runName=if($Profile -eq 'compat'){"$Loader-compat-server"}else{"$Loader-server"}
 $properties=Get-Content -Encoding UTF8 -LiteralPath (Join-Path $projectRoot "run/$runName/server.properties")
-$expectedWorld=if($GenerationVersion -eq 5){if($Profile -eq 'compat'){'verification-world-vortex-v11-compat'}else{'verification-world-vortex-v11-marine'}}elseif($GenerationVersion -eq 4){'verification-world-vortex-v10-edges'}else{'verification-world-vortex-v9-hydrology'}
+$expectedWorld=if($Profile -eq 'compat'){'verification-world-vortex-v11-compat'}else{'verification-world-vortex-v11-marine'}
 if ($properties -notcontains "level-name=$expectedWorld") {
     throw "Only the $expectedWorld disposable verification world is permitted."
 }
-$reportRoot=Join-Path $projectRoot "build/reports/hydrology-v$GenerationVersion/$Loader/$Profile/runtime"
+$reportRoot=Join-Path $projectRoot "build/reports/hydrology-current/$Loader/$Profile/runtime"
 [void](New-Item -ItemType Directory -Force -Path $reportRoot)
 $commands=switch($Phase) {
     'Climate' { 'fourthlayer verifyclimate' }

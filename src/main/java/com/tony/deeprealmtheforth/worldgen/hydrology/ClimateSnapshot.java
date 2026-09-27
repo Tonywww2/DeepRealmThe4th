@@ -51,12 +51,6 @@ public final class ClimateSnapshot {
     }
     public String serialize() { return canonical; }
     public Map<String, Climate> climates() { return climates; }
-    public ClimateSnapshot scaleRain(double factor) {
-        if (!Double.isFinite(factor) || factor < 0 || factor > 1) throw new IllegalArgumentException("Rain factor must be 0..1");
-        Map<String, Climate> reduced = new HashMap<>();
-        climates.forEach((id, c) -> reduced.put(id, new Climate(c.temperature(), c.downfall() * factor, c.precipitation(), c.modifier())));
-        return new ClimateSnapshot(reduced, pools, extras);
-    }
     public String biomeAt(BaseTerrain base, int x, int z) {
         return BaseBiomeResolver.select(base.biomes(), base.sample(x, z), x, z, pools, extras, Function.identity());
     }

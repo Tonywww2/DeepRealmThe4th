@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [" G ", "XIX", " A "],
+  "key": {
+    "G": {"item": "minecraft:gold_ingot"},
+    "X": {"item": "deeprealm_4th:agility_gem"},
+    "I": {"item": "minecraft:compass"},
+    "A": {"item": "minecraft:amethyst_shard"}
+  },
+  "result": {"item": "deeprealm_4th:wayfarer_medal"}
+}

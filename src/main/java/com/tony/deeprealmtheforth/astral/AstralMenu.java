@@ -35,11 +35,12 @@ public final class AstralMenu extends AbstractContainerMenu {
         this.playerSlotsStart = cellCount;
         int bodyY = 18 + Math.max(layout.height() * 18, 108);
         int playerX = Math.max(8, (screenWidth(layout) - 162) / 2);
+        int gridX = gridX(layout);
 
         for (int y = 0; y < layout.height(); y++) {
             for (int x = 0; x < layout.width(); x++) {
                 int index = y * layout.width() + x;
-                addSlot(new Slot(cells, index, 8 + x * 18, 18 + y * 18) {
+                addSlot(new Slot(cells, index, gridX + x * 18, 18 + y * 18) {
                     @Override
                     public boolean mayPlace(ItemStack stack) {
                         return cells.canPlaceItem(index, stack);
@@ -67,7 +68,11 @@ public final class AstralMenu extends AbstractContainerMenu {
     }
 
     public static int screenWidth(ContainerLayout layout) {
-        return Math.max(176, layout.width() * 18 + 16) + 108;
+        return Math.max(176, layout.width() * 18 + 16);
+    }
+
+    public static int gridX(ContainerLayout layout) {
+        return (screenWidth(layout) - layout.width() * 18) / 2;
     }
 
     private Slot playerSlot(Inventory inventory, int index, int x, int y) {

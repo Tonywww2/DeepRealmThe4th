@@ -1,5 +1,5 @@
 {
   "size": 1,
-  "icon": "curios:slot/empty_curios_slot",
+  "icon": "deeprealm_4th:slot/base_container",
   "validators": ["curios:tag"]
 }

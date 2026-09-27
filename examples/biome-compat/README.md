@@ -21,6 +21,8 @@
 
 V5 内置 Biomes O' Plenty 和 Terralith 的一组可选标签映射，不强制安装它们，也不声称收录它们的所有群系。新增映射优先按生态/地形加入具体子池；`arid/plateau` 对应平顶台地，`arid/mountain` 对应干旱山脊，不能把雪山混入干旱池。
 
+粘土山（恶地式红沙、分层陶瓦山体）可同时加入 `region/arid/mountain` 和 `surface/badlands` 群系标签。后者位于 `data/deeprealm_4th/tags/worldgen/biome/surface/badlands.json`，默认包含三种原版恶地；它只为 V5 干燥、非护岸的干旱山脊选择陶瓦材质，不改变高度、水系或群系气候。不要把所有干旱山地都加入此材质标签；风袭热带草原等仍保留砂土/岩石。自定义条目应使用 `required:false`，并保持 `replace:false`。
+
 开发测试：`gradlew.bat :1.20.1-forge:runServer -PbiomeCompat=true` 或 `:1.21.1-neoforge:runServer` 同参数；客户端也可使用对应 `runClient`。测试运行目录独立为 `run/<loader>-compat-<run>`，普通启动不载入这些开发依赖。带模组创建的世界不要在移除模组后继续打开。详情见 `docs/海洋与干旱山地-V5计划与验证.md`。
 
 本例支持 1.20.1 和 1.21.1；`tests/fixtures/tag-compatibility` 则是故意清空一个池的回归夹具，只用于一次性测试世界，不能作为正常兼容包安装。

@@ -22,7 +22,7 @@ public final class AstralScoreEngine {
         }
         List<ItemStack> snapshot = contents.stream().map(ItemStack::copy).toList();
 
-        List<ActiveFiller> fillers = new ArrayList<>();
+        List<SelectedFiller> selected = new ArrayList<>();
         Map<Integer, InactiveReason> inactive = new LinkedHashMap<>();
         Set<String> present = new HashSet<>();
         for (int i = 0; i < snapshot.size(); i++) {
@@ -46,9 +46,17 @@ public final class AstralScoreEngine {
                 inactive.put(i, InactiveReason.DUPLICATE);
                 continue;
             }
-            fillers.add(new ActiveFiller(definition,
-                    new FillerContext(player, container, stack, layout, snapshot, i), i));
+            selected.add(new SelectedFiller(definition, stack, i));
             scores = scores.plus(definition.baseScores());
+        }
+
+        Set<Integer> effectiveCells = new HashSet<>();
+        for (SelectedFiller filler : selected) effectiveCells.add(filler.index());
+        List<ActiveFiller> fillers = new ArrayList<>(selected.size());
+        for (SelectedFiller filler : selected) {
+            fillers.add(new ActiveFiller(filler.definition(),
+                    new FillerContext(player, container, filler.stack(), layout, snapshot,
+                            filler.index(), effectiveCells), filler.index()));
         }
 
         List<String> errors = new ArrayList<>();
@@ -155,6 +163,7 @@ public final class AstralScoreEngine {
         return current;
     }
 
+    private record SelectedFiller(FillerDefinition definition, ItemStack stack, int index) {}
     private record ActiveFiller(FillerDefinition definition, FillerContext context, int index) {}
 
     public enum InactiveReason { SUPPRESSED, DUPLICATE }

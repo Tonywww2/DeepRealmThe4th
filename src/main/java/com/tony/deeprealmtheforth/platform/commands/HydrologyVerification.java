@@ -22,14 +22,12 @@ public final class HydrologyVerification {
     private HydrologyVerification() {}
     public static int run(CommandSourceStack source,ServerLevel level,SpiralChunkGenerator generator,String phase)
             throws CommandSyntaxException {
-        int version=generator.terrain().generationVersion();
         String world=source.getServer().getWorldData().getLevelName();
-        boolean match=version==3&&world.equals("verification-world-vortex-v9-hydrology")
-                ||version==4&&world.equals("verification-world-vortex-v10-edges")
-                ||version==5&&(world.equals("verification-world-vortex-v11-marine")||world.equals("verification-world-vortex-v11-compat"));
+        boolean match=world.equals("verification-world-vortex-v11-marine")
+                ||world.equals("verification-world-vortex-v11-compat");
         if(!VerificationWorlds.allowed(source,level)||!match)
-            throw error("Hydrology tests require an empty seed-42 disposable save matching its generation version.");
-        Path folder=Path.of("hydrology-v"+version),manifestPath=folder.resolve("active-probes.tsv");
+            throw error("Hydrology tests require an empty seed-42 current verification save.");
+        Path folder=Path.of("hydrology-v5"),manifestPath=folder.resolve("active-probes.tsv");
         try {
             Files.createDirectories(folder);
             if(phase.equals("prepare")) {

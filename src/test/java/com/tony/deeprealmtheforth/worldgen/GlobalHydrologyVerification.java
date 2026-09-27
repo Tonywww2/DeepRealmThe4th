@@ -7,17 +7,16 @@ import com.tony.deeprealmtheforth.worldgen.terrain.TerrainProfile;
 import java.nio.file.*;
 import java.util.*;
 
-/** Integration-stage global watershed tests, deliberately separate from the V1/V2 artifacts. */
+/** Checks the current watershed and generated river columns against captured registry climate. */
 public final class GlobalHydrologyVerification {
     private static int checks;
     private static void require(boolean ok,String text) { checks++;if(!ok)throw new AssertionError(text); }
     public static void main(String[] args) throws Exception {
         Path out=Path.of(args[1]);Files.createDirectories(out);
         var climate=ClimateSnapshot.read(Path.of(args[0]));
-        int version=args.length>2?Integer.parseInt(args[2]):3;
-        var base=BaseTerrain.naturalWorld(42,SpiralParameters.DEFAULT,version);
+        var base=new BaseTerrain(42,SpiralParameters.DEFAULT);
         var graph=new GlobalDrainage(42,base,climate);
-        Set<Long> visited=new HashSet<>();StringBuilder report=new StringBuilder("GLOBAL_DRAINAGE_V"+version+"\n");
+        Set<Long> visited=new HashSet<>();StringBuilder report=new StringBuilder("GLOBAL_DRAINAGE_CURRENT\n");
         List<GlobalDrainage.Basin> basins=new ArrayList<>(); long begin=System.nanoTime();
         for(int[] domain:new int[][]{{3232,-3648},{544,-9888},{-5312,1568}}) {
             int count=0,wet=0,maxNodes=0,maxOrder=0,rejected=0;
@@ -51,7 +50,7 @@ public final class GlobalHydrologyVerification {
         System.out.println("geometry="+status+" acceptedReaches="+acceptedReaches);
         require(acceptedReaches>10,"World integration must retain meaningful river networks");
         verifyCrossings(models);
-        var terrain=new TerrainProfile(42,SpiralParameters.DEFAULT,climate,version);
+        var terrain=new TerrainProfile(42,SpiralParameters.DEFAULT,climate);
         int waterColumns=0,escaped=0,maxCut=0,maxRaise=0;
         for(int x=3232;x<5280;x+=4)for(int z=-3648;z<-1600;z+=4) {
             var c=terrain.sample(x,z);var h=terrain.baseTerrain().sample(x,z);
@@ -73,8 +72,7 @@ public final class GlobalHydrologyVerification {
         require(maxCut<=WatershedRivers.MAX_CUT+2,"Bounded incision in final columns");
         require(maxRaise<=4,"No tall artificial bank levees");
         verifyWaterConnectivity(terrain,models,report);
-        WorldHydrologyPreview.render(out,terrain,models);
-        verifyOrdering(climate,report,version);
+        verifyOrdering(climate,report);
         Collections.reverse(basins);graph.clearCaches();
         for(var basin:basins.subList(0,Math.min(12,basins.size())))require(basin.equals(graph.basin(basin.id())),"Complete basin rebuild independent of window/order");
         report.append("checks=").append(checks).append(" ms=").append((System.nanoTime()-begin)/1e6).append('\n');
@@ -115,10 +113,10 @@ public final class GlobalHydrologyVerification {
                 require(!(la.distance(x+.5,z+.5)<0&&lb.distance(x+.5,z+.5)<0),"Separate terminal lakes overlap");
         }
     }
-    private static void verifyOrdering(ClimateSnapshot climate,StringBuilder report,int version) throws Exception {
+    private static void verifyOrdering(ClimateSnapshot climate,StringBuilder report) throws Exception {
         for(long seed:new long[]{0,42,-739221}) {
-            var serial=new TerrainProfile(seed,SpiralParameters.DEFAULT,climate,version);
-            var concurrent=new TerrainProfile(seed,SpiralParameters.DEFAULT,climate,version);
+            var serial=new TerrainProfile(seed,SpiralParameters.DEFAULT,climate);
+            var concurrent=new TerrainProfile(seed,SpiralParameters.DEFAULT,climate);
             var center=serial.layout().armCenter(5,4096);
             List<int[]> points=new ArrayList<>();
             for(int dx=-192;dx<=192;dx+=32)for(int dz=-192;dz<=192;dz+=32)

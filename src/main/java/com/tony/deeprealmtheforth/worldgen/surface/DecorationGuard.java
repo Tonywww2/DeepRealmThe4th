@@ -54,7 +54,7 @@ public final class DecorationGuard implements AutoCloseable {
         int y = pos.getY();
         if (!c.land() || y < c.bottom() + 3 || !structure && y > c.surface() + 48) return false;
         if (c.shore() && y <= c.top()) return false;
-        if (terrain.generationVersion() >= 3 && (c.arm() == 1 || c.arm() == 5)) {
+        if (c.arm() == 1 || c.arm() == 5) {
             // Features and structures may still run, but must not dam a channel or
             // excavate its graded containment bank. Waterlogged plants remain legal.
             if (c.wet() && y > c.top() && y <= c.fluidLevel()

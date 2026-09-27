@@ -9,15 +9,13 @@ import java.util.function.Function;
 /** World-space ecological patches; deliberately independent of height and spiral shear. */
 public final class BiomeClimate {
     private final long seed;
-    private final boolean detailedEdges;
     private final ThreadLocal<Memo> memo=ThreadLocal.withInitial(Memo::new);
     private static final class Memo {
         final String[] keys=new String[128];final long[] salts=new long[128];
         long x,z;Point point;
     }
 
-    public BiomeClimate(long seed) { this(seed,false); }
-    public BiomeClimate(long seed,boolean detailedEdges) { this.seed = seed;this.detailedEdges=detailedEdges; }
+    public BiomeClimate(long seed) { this.seed = seed; }
 
     public Point point(double x, double z) {
         Memo m=memo.get();long bx=Double.doubleToLongBits(x),bz=Double.doubleToLongBits(z);
@@ -29,7 +27,7 @@ public final class BiomeClimate {
                 + 12 * SeededNoise.fractal(seed ^ 97631, a, b, 90, 2),
                 b + 54 * SeededNoise.fractal(seed ^ 61871, a, b, 320, 2)
                 + 12 * SeededNoise.fractal(seed ^ 31819, a, b, 90, 2));
-        if(detailedEdges)result=new Point(result.x()+18*SeededNoise.fractal(seed^791821,a,b,47,2)
+        result=new Point(result.x()+18*SeededNoise.fractal(seed^791821,a,b,47,2)
                 +5*SeededNoise.fractal(seed^717893,a,b,17,2),
                 result.z()+18*SeededNoise.fractal(seed^271931,a,b,47,2)+5*SeededNoise.fractal(seed^319827,a,b,17,2));
         m.x=bx;m.z=bz;m.point=result;return result;

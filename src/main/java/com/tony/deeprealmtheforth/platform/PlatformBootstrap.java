@@ -5,6 +5,7 @@ import com.tony.deeprealmtheforth.platform.items.AstralCurioSlotGuard;
 import com.tony.deeprealmtheforth.platform.items.AstralCreativeTabRegistration;
 import com.tony.deeprealmtheforth.platform.items.AstralItemRegistration;
 import com.tony.deeprealmtheforth.platform.items.AstralMenuRegistration;
+import com.tony.deeprealmtheforth.platform.loot.AstralLootRegistration;
 import com.tony.deeprealmtheforth.platform.worldgen.WorldgenRegistration;
 
 //? if forge {
@@ -25,6 +26,7 @@ public final class PlatformBootstrap {
         AstralCreativeTabRegistration.register(bus);
         AstralCurioSlotGuard.register();
         AstralMenuRegistration.register(bus);
+        AstralLootRegistration.register(bus);
         WorldgenRegistration.register(bus);
         //? if forge {
         MinecraftForge.EVENT_BUS.addListener(PlatformBootstrap::commands);

@@ -6,8 +6,7 @@ import net.minecraft.server.level.ServerLevel;
 
 /** Exact allowlist of this project's disposable saves, never arbitrary player worlds. */
 final class VerificationWorlds {
-    private static final Set<String> NAMES=Set.of("verification-world-vortex-v8-shores", "verification-world-vortex-v9-hydrology",
-            "verification-world-vortex-v10-edges", "verification-world-vortex-v11-marine",
+    private static final Set<String> NAMES=Set.of("verification-world-vortex-v11-marine",
             "verification-world-vortex-v11-compat");
     private VerificationWorlds() {}
     static boolean allowed(CommandSourceStack source,ServerLevel level) {

@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "deeprealm_4th:strength_gem",
+    "deeprealm_4th:agility_gem",
+    "deeprealm_4th:intelligence_gem",
+    "deeprealm_4th:constitution_gem",
+    "deeprealm_4th:perception_gem",
+    "deeprealm_4th:magic_gem"
+  ]
+}

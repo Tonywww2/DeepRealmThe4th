@@ -33,7 +33,7 @@ public final class SpiralChunkGenerator extends VersionedChunkGenerator {
                 return new SpiralChunkGenerator(spiral);
             }, SpiralChunkGenerator::getBiomeSource);
     // Forge's codec registry is identity-based. Registration and saving must use this same object.
-    public static final Codec<SpiralChunkGenerator> LEGACY_CODEC = MAP_CODEC.codec();
+    public static final Codec<SpiralChunkGenerator> CODEC = MAP_CODEC.codec();
 
     private final SpiralBiomeSource source;
     private final BiomeDecoration decoration = new BiomeDecoration();
@@ -41,6 +41,8 @@ public final class SpiralChunkGenerator extends VersionedChunkGenerator {
             net.minecraft.core.registries.Registries.BIOME,com.tony.deeprealmtheforth.platform.PlatformIds.id("surface/grass"));
     private static final net.minecraft.tags.TagKey<Biome> WHITE_SUBSTRATE=net.minecraft.tags.TagKey.create(
             net.minecraft.core.registries.Registries.BIOME,com.tony.deeprealmtheforth.platform.PlatformIds.id("surface/white_terracotta"));
+    private static final net.minecraft.tags.TagKey<Biome> BADLANDS_SUBSTRATE=net.minecraft.tags.TagKey.create(
+            net.minecraft.core.registries.Registries.BIOME,com.tony.deeprealmtheforth.platform.PlatformIds.id("surface/badlands"));
 
     public SpiralChunkGenerator(SpiralBiomeSource source) { super(source); this.source = source; }
     public TerrainProfile terrain() { return source.terrain(); }
@@ -49,8 +51,17 @@ public final class SpiralChunkGenerator extends VersionedChunkGenerator {
 
     /** Same material path for fill, height, base-column queries and runtime verification. */
     public BlockState terrainBlock(TerrainProfile.Column c, int y, int x, int z) {
-        BlockState block = TerrainMaterials.at(c, y, x, z, terrain().seed(),terrain().generationVersion());
-        if (terrain().generationVersion() >= 3 && c.land()) {
+        return terrainBlock(c,y,x,z,clayMountain(c,x,z));
+    }
+
+    private boolean clayMountain(TerrainProfile.Column c,int x,int z) {
+        return TerrainMaterials.supportsClayMountain(c)
+                &&source.biomeAt(x,z).is(BADLANDS_SUBSTRATE);
+    }
+
+    private BlockState terrainBlock(TerrainProfile.Column c,int y,int x,int z,boolean clayMountain) {
+        BlockState block = TerrainMaterials.at(c, y, x, z, terrain().seed(),clayMountain);
+        if (c.land()) {
             if (c.wet() && c.fluid() == TerrainProfile.Fluid.WATER && y == c.fluidLevel()
                     && BiomeClimateAdapter.snowClimate(source.biomeAt(x, z).value(), new BlockPos(x, y, z)))
                 return net.minecraft.world.level.block.Blocks.ICE.defaultBlockState();
@@ -65,7 +76,7 @@ public final class SpiralChunkGenerator extends VersionedChunkGenerator {
     protected MapCodec<? extends ChunkGenerator> mapCodec() { return MAP_CODEC; }
 
     @Override
-    protected Codec<? extends ChunkGenerator> legacyCodec() { return LEGACY_CODEC; }
+    protected Codec<? extends ChunkGenerator> forgeCodec() { return CODEC; }
 
     @Override
     public ChunkGeneratorStructureState createState(HolderLookup<StructureSet> structures, RandomState random, long seed) {
@@ -97,13 +108,14 @@ public final class SpiralChunkGenerator extends VersionedChunkGenerator {
                 int x = chunk.getPos().getMinBlockX() + lx, z = chunk.getPos().getMinBlockZ() + lz;
                 TerrainProfile.Column c = terrain.sample(x, z);
                 if (!c.land()) continue;
+                boolean clayMountain=clayMountain(c,x,z);
                 for (int y = Math.max(c.bottom(), chunk.getMinBuildHeight()); y <= c.surface() && y < chunk.getMaxBuildHeight(); y++) {
-                    BlockState block = terrainBlock(c, y, x, z);
+                    BlockState block = terrainBlock(c, y, x, z,clayMountain);
                     chunk.setBlockState(pos.set(x, y, z), block, false);
                     // Like vanilla aquifers: defer fluid simulation until the chunk and its
                     // neighbours are ready. setBlockState on a ProtoChunk does not run onPlace.
                     // Mark actual river/lake water only (not ice or sealed ocean interiors).
-                    if (terrain.generationVersion() >= 3 && (c.arm() == 1 || c.arm() == 5)
+                    if ((c.arm() == 1 || c.arm() == 5)
                             && block.getFluidState().is(net.minecraft.tags.FluidTags.WATER))
                         chunk.markPosForPostprocessing(pos);
                     floor.update(lx, y, lz, block);
@@ -132,16 +144,14 @@ public final class SpiralChunkGenerator extends VersionedChunkGenerator {
                     case "old_growth_pine_taiga", "old_growth_spruce_taiga" -> net.minecraft.world.level.block.Blocks.PODZOL;
                     default -> null;
                 };
-                if(terrain().generationVersion()>=5) {
-                    // Optional substrate adapters, not a replacement for another mod's surface-rule graph.
-                    if(holder.is(GRASS_SUBSTRATE)&&com.tony.deeprealmtheforth.worldgen.terrain.SeededNoise.fractal(
-                            terrain().seed()^831791,x,z,47,2)>-.20)
-                        substrate=net.minecraft.world.level.block.Blocks.GRASS_BLOCK;
-                    if(holder.is(WHITE_SUBSTRATE)) {
-                        substrate=net.minecraft.world.level.block.Blocks.WHITE_TERRACOTTA;
-                        for(int d=1;d<=3&&c.top()-d>c.bottom()+3;d++)
-                            chunk.setBlockState(pos.set(x,c.top()-d,z),substrate.defaultBlockState(),false);
-                    }
+                // Optional substrate adapters, not a replacement for another mod's surface-rule graph.
+                if(holder.is(GRASS_SUBSTRATE)&&com.tony.deeprealmtheforth.worldgen.terrain.SeededNoise.fractal(
+                        terrain().seed()^831791,x,z,47,2)>-.20)
+                    substrate=net.minecraft.world.level.block.Blocks.GRASS_BLOCK;
+                if(holder.is(WHITE_SUBSTRATE)) {
+                    substrate=net.minecraft.world.level.block.Blocks.WHITE_TERRACOTTA;
+                    for(int d=1;d<=3&&c.top()-d>c.bottom()+3;d++)
+                        chunk.setBlockState(pos.set(x,c.top()-d,z),substrate.defaultBlockState(),false);
                 }
                 if (substrate != null) chunk.setBlockState(pos.set(x, c.top(), z), substrate.defaultBlockState(), false);
             }
@@ -183,8 +193,9 @@ public final class SpiralChunkGenerator extends VersionedChunkGenerator {
     @Override
     public int getBaseHeight(int x, int z, Heightmap.Types type, LevelHeightAccessor height, RandomState random) {
         TerrainProfile.Column c = terrain().sample(x, z);
+        boolean clayMountain=clayMountain(c,x,z);
         for (int y = Math.min(c.surface(), height.getMaxBuildHeight() - 1); c.land() && y >= Math.max(c.bottom(), height.getMinBuildHeight()); y--) {
-            if (type.isOpaque().test(terrainBlock(c, y, x, z))) return y + 1;
+            if (type.isOpaque().test(terrainBlock(c, y, x, z,clayMountain))) return y + 1;
         }
         return height.getMinBuildHeight();
     }
@@ -192,8 +203,9 @@ public final class SpiralChunkGenerator extends VersionedChunkGenerator {
     @Override
     public NoiseColumn getBaseColumn(int x, int z, LevelHeightAccessor height, RandomState random) {
         TerrainProfile.Column c = terrain().sample(x, z);
+        boolean clayMountain=clayMountain(c,x,z);
         BlockState[] blocks = new BlockState[height.getHeight()];
-        for (int i = 0; i < blocks.length; i++) blocks[i] = terrainBlock(c, height.getMinBuildHeight() + i, x, z);
+        for (int i = 0; i < blocks.length; i++) blocks[i] = terrainBlock(c, height.getMinBuildHeight() + i, x, z,clayMountain);
         return new NoiseColumn(height.getMinBuildHeight(), blocks);
     }
 

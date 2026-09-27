@@ -23,16 +23,10 @@ public final class ClimateVerification {
             var biomes = generator.spiralBiomes();
             var snapshot = BiomeClimateAdapter.capture(biomes);
             var ops = net.minecraft.resources.RegistryOps.create(com.mojang.serialization.JsonOps.INSTANCE, level.registryAccess());
-            var codec = com.tony.deeprealmtheforth.worldgen.biome.SpiralBiomeSource.LEGACY_CODEC;
-            var encoded = codec.encodeStart(ops, biomes).result().orElseThrow().getAsJsonObject().deepCopy();
+            var codec = com.tony.deeprealmtheforth.worldgen.biome.SpiralBiomeSource.CODEC;
+            var encoded = codec.encodeStart(ops, biomes).result().orElseThrow().getAsJsonObject();
             if (codec.parse(ops, encoded).result().orElseThrow().generationVersion() != biomes.generationVersion())
                 throw new IllegalStateException("Worldgen version codec roundtrip");
-            encoded.remove("generation_version");
-            var legacy = codec.parse(ops, encoded).result().orElseThrow();legacy.bindSeed(level.getSeed());
-            var expectedLegacy = new com.tony.deeprealmtheforth.worldgen.terrain.TerrainProfile(level.getSeed(), biomes.parameters());
-            if (legacy.generationVersion() != 1) throw new IllegalStateException("Missing version must select legacy generator");
-            for (int x=-1024;x<=1024;x+=127) for (int z=-1024;z<=1024;z+=131)
-                if (!legacy.terrain().sample(x,z).equals(expectedLegacy.sample(x,z))) throw new IllegalStateException("Legacy codec terrain changed");
             int checked = 0, snow = 0, warmPeaks = 0;
             for (int x = -2046; x <= 2046; x += 28) for (int z = -2046; z <= 2046; z += 28) {
                 var holder = biomes.baseBiomeAt(x, z);
@@ -47,16 +41,16 @@ public final class ClimateVerification {
                 if (id.equals("minecraft:stony_peaks") && y >= 120 && !cold) warmPeaks++;
                 checked++;
             }
-            Path folder = Path.of(biomes.generationVersion()>=5?"biome-compat-v5":"hydrology-prototype");
+            Path folder = Path.of("biome-compat-v5");
             Files.createDirectories(folder);
             Path path = folder.resolve("climate.tsv");
             Files.writeString(path, snapshot.serialize());
             if (!ClimateSnapshot.read(path).serialize().equals(snapshot.serialize()))
                 throw new IllegalStateException("Snapshot roundtrip");
-            int coldFixture=generator.terrain().generationVersion()>=3?coldFixture(level,biomes):0;
+            int coldFixture=coldFixture(level,biomes);
             String report = "CLIMATE_VERIFY_OK biomes=" + snapshot.climates().size() + " baseColumns=" + checked
                     + " nativeSnowEligible=" + snow + " nativeWarmStonyPeaksAbove120=" + warmPeaks
-                    + " versionCodec=OK missingVersionLegacy=OK isolatedColdFixtureColumns="+coldFixture
+                    + " versionCodec=OK isolatedColdFixtureColumns="+coldFixture
                     + " snapshot="+path;
             Files.writeString(folder.resolve("runtime-verification.txt"), report + "\n");
             source.sendSuccess(() -> Component.literal(report), false);

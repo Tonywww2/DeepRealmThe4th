@@ -1,6 +1,7 @@
 package com.tony.deeprealmtheforth.compat.kubejs;
 
 import com.tony.deeprealmtheforth.astral.AstralFillers;
+import com.tony.deeprealmtheforth.astral.AstralContainers;
 import com.tony.deeprealmtheforth.astral.FillerActivation;
 import com.tony.deeprealmtheforth.astral.FillerDefinition;
 import com.tony.deeprealmtheforth.astral.ScoreType;
@@ -33,6 +34,7 @@ public final class AstralKubeJSPlugin extends KubeJSPlugin {
         /*if (bindings.type() != ScriptType.STARTUP) return;
         *///?}
         bindings.add("AstralFillers", AstralFillers.class);
+        bindings.add("AstralContainers", AstralContainers.class);
         bindings.add("FillerDefinition", FillerDefinition.class);
         bindings.add("FillerActivation", FillerActivation.class);
         bindings.add("ScoreType", ScoreType.class);

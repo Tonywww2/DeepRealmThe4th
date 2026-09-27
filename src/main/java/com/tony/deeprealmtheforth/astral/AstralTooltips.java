@@ -1,5 +1,7 @@
 package com.tony.deeprealmtheforth.astral;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -16,15 +18,19 @@ public final class AstralTooltips {
         tooltip.add(Component.translatable(PREFIX + "base_container.open").withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable(PREFIX + "base_container.layout",
                 layout.width(), layout.height(), layout.openCount()).withStyle(ChatFormatting.DARK_GRAY));
-        tooltip.add(Component.translatable(PREFIX + "base_container.closed").withStyle(ChatFormatting.DARK_GRAY));
         tooltip.add(Component.translatable(PREFIX + "base_container.equipped").withStyle(ChatFormatting.GOLD));
-        tooltip.add(Component.translatable(PREFIX + "common.scores_only").withStyle(ChatFormatting.DARK_GRAY));
+        AstralClientPreview.appendContainer(stack, item, tooltip);
     }
 
     public static void appendFiller(ItemStack stack, List<Component> tooltip, List<String> descriptionKeys) {
-        for (String key : descriptionKeys) {
-            tooltip.add(Component.translatable(key).withStyle(ChatFormatting.GRAY));
-        }
+        appendFillerComponents(stack, tooltip, descriptionKeys.stream()
+                .map(key -> (Component) Component.translatable(key).withStyle(ChatFormatting.GRAY))
+                .toList());
+    }
+
+    public static void appendFillerComponents(ItemStack stack, List<Component> tooltip,
+                                              List<Component> descriptionLines) {
+        tooltip.addAll(descriptionLines);
         FillerDefinition definition = AstralFillers.find(stack);
         if (definition != null) {
             tooltip.add(Component.translatable(PREFIX + "activation."
@@ -36,7 +42,13 @@ public final class AstralTooltips {
                         Component.translatable("item." + parts[0] + "." + parts[1]))
                         .withStyle(ChatFormatting.RED));
             }
+            tooltip.add(Component.translatable(PREFIX + "filler.equipped")
+                    .withStyle(ChatFormatting.DARK_GRAY));
         }
-        tooltip.add(Component.translatable(PREFIX + "common.filler_equipped").withStyle(ChatFormatting.DARK_GRAY));
+    }
+
+    public static String number(double value) {
+        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP)
+                .stripTrailingZeros().toPlainString();
     }
 }

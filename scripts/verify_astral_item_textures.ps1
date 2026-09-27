@@ -6,8 +6,9 @@ $registrationPath = Join-Path $root 'src/main/java/com/tony/deeprealmtheforth/pl
 
 Add-Type -AssemblyName System.Drawing
 $registration = Get-Content -Raw -Encoding utf8 $registrationPath
-$itemIds = [regex]::Matches($registration, 'ITEMS\.register\("([a-z0-9_]+)"') |
-    ForEach-Object { $_.Groups[1].Value }
+$itemIds = [regex]::Matches($registration, '(?:ITEMS\.register|scoreGem|regionalGem|gem|percentGem|conditionGem)\("([a-z0-9_]+)"') |
+    ForEach-Object { $_.Groups[1].Value } |
+    Sort-Object -Unique
 
 foreach ($id in $itemIds) {
     $modelPath = Join-Path $modelDirectory "$id.json"

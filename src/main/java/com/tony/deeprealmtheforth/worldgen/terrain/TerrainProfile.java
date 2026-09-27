@@ -41,7 +41,6 @@ public final class TerrainProfile {
     private final VortexField field;
     private final BiomeClimate biomes;
     private final WatershedRivers rivers;
-    private final int generationVersion;
     // Bounded per-thread memoization, never part of terrain semantics or persisted state.
     private final ThreadLocal<Cache> cache = ThreadLocal.withInitial(Cache::new);
     private static final class Cache {
@@ -49,22 +48,14 @@ public final class TerrainProfile {
         final Column[] raw = new Column[16384], result = new Column[16384];
     }
 
-    public TerrainProfile(long seed, SpiralParameters parameters) {
-        this(seed, parameters, null);
-    }
     /** Immutable registry input is captured after loader biome modifiers, before generation. */
     public TerrainProfile(long seed, SpiralParameters parameters, ClimateSnapshot climate) {
-        this(seed,parameters,climate,climate==null?1:3);
-    }
-    public TerrainProfile(long seed, SpiralParameters parameters, ClimateSnapshot climate,int version) {
-        if(version!=1&&version!=3&&version!=4&&version!=5||(version==1)!=(climate==null))throw new IllegalArgumentException("Invalid terrain version/climate");
-        generationVersion=version;
-        this.seed = seed; this.base = climate == null ? new BaseTerrain(seed, parameters)
-                : BaseTerrain.naturalWorld(seed, parameters,version);
+        if (climate == null) throw new IllegalArgumentException("Climate snapshot is required");
+        this.seed = seed; this.base = new BaseTerrain(seed, parameters);
         this.layout = base.layout(); this.field = base.field(); this.biomes = base.biomes();
-        this.rivers = climate == null ? null : new WatershedRivers(seed, base, climate);
+        this.rivers = new WatershedRivers(seed, base, climate);
     }
-    public int generationVersion() { return generationVersion; }
+    public int generationVersion() { return 5; }
     public WatershedRivers hydrology() { return rivers; }
     public BaseTerrain baseTerrain() { return base; }
     public long seed() { return seed; }
@@ -76,9 +67,8 @@ public final class TerrainProfile {
         Cache memo = cache.get(); long key = key(x, z); int index = index(key);
         if (memo.raw[index] != null && memo.keys[index] == key && memo.result[index] != null) return memo.result[index];
         Column c = raw(x, z), result = c;
-        // Connected river grades may have different water heights. Do not replace
-        // their shared cross-section with the legacy same-level basin wall.
-        boolean connectedRiver = rivers != null && c.fluid() == Fluid.WATER && c.arm() != 7;
+        // Connected river grades may have different water heights; keep their cross-section open.
+        boolean connectedRiver = c.fluid() == Fluid.WATER && c.arm() != 7;
         if (!connectedRiver && (c.wet() || c.land() && c.arm() == 7)) {
             boolean ocean = c.arm() == 7;
             int radius = ocean ? SHORE_WIDTH : 1;
@@ -120,54 +110,31 @@ public final class TerrainProfile {
         BaseTerrain.Shape s = base.shape(x, z);
         VortexField.Point p = s.point();
         if (!p.land()) return base.sample(x, z);
-        double u = s.u(), v = s.v(), top = s.top();
+        double top = s.top();
         double rim = layout.parameters().plungeRadius();
         int water = s.water(); Fluid fluid = s.fluid(); Theme theme = s.theme();
         long variant = s.variant();
         double riverDistance = Double.POSITIVE_INFINITY;
-        if (rivers != null) {
-            if ((p.arm() == 1 || p.arm() == 5) && p.radius() > rim + 144 && p.edgeDistance() > 12) {
-                WatershedRivers.Sample river = rivers.sample(x, z, top);
-                riverDistance = river.distance();
-                if (riverDistance < 0) {
-                    theme = Theme.RIVER; water = river.water(); fluid = Fluid.WATER; variant = river.basin();
-                    top = water - Math.max(1, river.depth() * (1 - Math.exp(riverDistance / 3.2)));
-                } else if (Double.isFinite(riverDistance)) {
-                    double bank = river.water() + .38 * riverDistance + .018 * riverDistance * riverDistance;
-                    top = Math.min(top, bank);
-                    // The short upstream flow envelope contains vanilla falling/spreading
-                    // water at one-block grades without blocking the river cross-section.
-                    top = Math.max(top, river.containment());
-                }
-            }
-            Column c = base.finish(x, z, s, top, water, fluid, theme, variant, riverDistance);
-            if (Double.isFinite(riverDistance)) {
-                Column original = base.finish(x, z, s, s.top(), s.water(), s.fluid(), s.theme(), s.variant(), Double.POSITIVE_INFINITY);
-                return new Column(c.arm(), Math.max(original.bottom() + 3, c.top()), original.bottom(), c.fluidLevel(),
-                        c.fluid(), c.theme(), c.cell(), c.edgeDistance(), c.shore(), c.riverDistance(), c.beach());
-            }
-            return c;
-        }
-        if ((p.arm() == 1 || p.arm() == 5) && p.radius() > rim + 60) {
-            RiverNetwork.Sample river = RiverNetwork.sample(seed, u, v, layout);
-            double clearance = SpiralLayout.smooth(8, 26, p.edgeDistance())
-                    * SpiralLayout.smooth(rim + 60, rim + 140, p.radius());
+        if ((p.arm() == 1 || p.arm() == 5) && p.radius() > rim + 144 && p.edgeDistance() > 12) {
+            WatershedRivers.Sample river = rivers.sample(x, z, top);
             riverDistance = river.distance();
-            // Smooth minimum joins the valley to existing relief without a
-            // fixed-width shoulder. Banks widen naturally where relief is higher.
-            double h = Math.max(0, 4 - Math.abs(top - river.valleyFloor())) / 4;
-            double valleyTop = Math.min(top, river.valleyFloor()) - h * h;
-            top += (valleyTop - top) * clearance;
-            if (river.distance() >= 0 && clearance > .999) {
-                double bank = river.level() + .16 * river.distance();
-                top += Math.max(0, bank - top) * (1 - SpiralLayout.smooth(0, 24, river.distance()));
-                if (river.distance() < 4) top = Math.max(river.level(), top);
-            }
-            if (river.distance() < 0 && clearance > .999) {
-                theme = Theme.RIVER; water = river.level(); fluid = Fluid.WATER;
-                top = water - 5.5 * (1 - Math.exp(river.distance() / 3.5)); variant = river.catchment();
+            if (riverDistance < 0) {
+                theme = Theme.RIVER; water = river.water(); fluid = Fluid.WATER; variant = river.basin();
+                top = water - Math.max(1, river.depth() * (1 - Math.exp(riverDistance / 3.2)));
+            } else if (Double.isFinite(riverDistance)) {
+                double bank = river.water() + .38 * riverDistance + .018 * riverDistance * riverDistance;
+                top = Math.min(top, bank);
+                // The short upstream flow envelope contains vanilla falling/spreading
+                // water at one-block grades without blocking the river cross-section.
+                top = Math.max(top, river.containment());
             }
         }
-        return base.finish(x, z, s, top, water, fluid, theme, variant, riverDistance);
+        Column c = base.finish(x, z, s, top, water, fluid, theme, variant, riverDistance);
+        if (Double.isFinite(riverDistance)) {
+            Column original = base.finish(x, z, s, s.top(), s.water(), s.fluid(), s.theme(), s.variant(), Double.POSITIVE_INFINITY);
+            return new Column(c.arm(), Math.max(original.bottom() + 3, c.top()), original.bottom(), c.fluidLevel(),
+                    c.fluid(), c.theme(), c.cell(), c.edgeDistance(), c.shore(), c.riverDistance(), c.beach());
+        }
+        return c;
     }
 }
