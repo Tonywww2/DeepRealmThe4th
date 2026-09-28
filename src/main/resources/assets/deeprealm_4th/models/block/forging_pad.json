@@ -1,0 +1,13 @@
+{
+  "textures": {"all": "deeprealm_4th:block/forging_pad", "particle": "deeprealm_4th:block/forging_pad"},
+  "elements": [
+    {
+      "from": [1, 0, 1], "to": [15, 2, 15],
+      "faces": {
+        "up": {"texture": "#all"}, "down": {"texture": "#all"},
+        "north": {"texture": "#all"}, "south": {"texture": "#all"},
+        "east": {"texture": "#all"}, "west": {"texture": "#all"}
+      }
+    }
+  ]
+}

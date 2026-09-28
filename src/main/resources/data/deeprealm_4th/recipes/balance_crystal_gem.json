@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "deeprealm_4th:triangulum_australe_projection"
+    },
+    {
+      "item": "deeprealm_4th:star_slurry_blank"
+    },
+    {
+      "item": "deeprealm_4th:constitution_gem"
+    }
+  ],
+  "result": {
+    "item": "deeprealm_4th:balance_crystal_gem"
+  }
+}

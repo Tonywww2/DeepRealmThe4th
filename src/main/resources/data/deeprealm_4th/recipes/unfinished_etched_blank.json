@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "deeprealm_4th:etched_step_gem"
+    },
+    {
+      "item": "deeprealm_4th:stabilized_star_slurry"
+    }
+  ],
+  "result": {
+    "item": "deeprealm_4th:unfinished_etched_blank"
+  }
+}

@@ -2,21 +2,26 @@ $root = Resolve-Path (Join-Path $PSScriptRoot '..')
 $namespace = 'deeprealm_4th'
 $modelDirectory = Join-Path $root "src/main/resources/assets/$namespace/models/item"
 $textureDirectory = Join-Path $root "src/main/resources/assets/$namespace/textures/item"
-$registrationPath = Join-Path $root 'src/main/java/com/tony/deeprealmtheforth/platform/items/AstralItemRegistration.java'
+$registrationPath = Join-Path $root 'src/main/java/com/tonywww/deeprealm4th/astral/content/AstralItemCatalog.java'
 
 Add-Type -AssemblyName System.Drawing
 $registration = Get-Content -Raw -Encoding utf8 $registrationPath
-$itemIds = [regex]::Matches($registration, '(?:ITEMS\.register|scoreGem|regionalGem|gem|percentGem|conditionGem)\("([a-z0-9_]+)"') |
+$itemIds = [regex]::Matches($registration, '(?:registerItem|scoreGem|regionalGem|gem|percentGem|conditionGem)\("([a-z0-9_]+)"') |
     ForEach-Object { $_.Groups[1].Value } |
     Sort-Object -Unique
 
 foreach ($id in $itemIds) {
     $modelPath = Join-Path $modelDirectory "$id.json"
     $texturePath = Join-Path $textureDirectory "$id.png"
+    if ($id -eq 'star_slurry_seep') {
+        $texturePath = Join-Path $root "src/main/resources/assets/$namespace/textures/block/star_slurry_seep.png"
+    }
     if (-not (Test-Path -LiteralPath $modelPath)) { throw "Missing item model: $modelPath" }
     if (-not (Test-Path -LiteralPath $texturePath)) { throw "Missing item texture: $texturePath" }
     $model = Get-Content -Raw -Encoding utf8 $modelPath | ConvertFrom-Json
-    if ($model.textures.layer0 -ne "$namespace`:item/$id") {
+    $dynamicFrame = $id -eq 'projection_frame' -and $model.parent -eq 'minecraft:builtin/entity'
+    $blockItem = $id -eq 'star_slurry_seep' -and $model.parent -eq "$namespace`:block/star_slurry_seep"
+    if (-not ($dynamicFrame -or $blockItem) -and $model.textures.layer0 -ne "$namespace`:item/$id") {
         throw "Item model $id does not use its own texture"
     }
 

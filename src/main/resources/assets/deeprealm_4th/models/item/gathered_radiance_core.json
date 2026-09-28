@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "deeprealm_4th:item/gathered_radiance_core"
+  }
+}

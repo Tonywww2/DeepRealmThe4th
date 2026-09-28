@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "deeprealm_4th:crux_projection"
+    },
+    {
+      "item": "deeprealm_4th:star_slurry_blank"
+    },
+    {
+      "item": "deeprealm_4th:strength_gem"
+    }
+  ],
+  "result": {
+    "id": "deeprealm_4th:convergent_facet_gem"
+  }
+}

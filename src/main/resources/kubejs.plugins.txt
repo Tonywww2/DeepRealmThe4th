@@ -1,1 +1,1 @@
-com.tony.deeprealmtheforth.compat.kubejs.AstralKubeJSPlugin
+com.tonywww.deeprealm4th.platform.integration.kubejs.AstralKubeJSPlugin

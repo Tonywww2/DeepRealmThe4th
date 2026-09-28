@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "deeprealm_4th:item/stabilized_star_slurry"
+  }
+}

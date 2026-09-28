@@ -10,6 +10,18 @@ val modId = property("mod.id").toString()
 val artifactVersion = "${property("mod.version")}+$mcVersion"
 val targetJavaVersion = 21
 val biomeCompat = providers.gradleProperty("biomeCompat").map(String::toBoolean).getOrElse(false)
+val processRecipeSource = rootProject.file("scripts/GenerateAstralProcessRecipes.java")
+val generatedProcessRecipes = layout.buildDirectory.dir("generated/astral-process-recipes")
+val generateAstralProcessRecipes by tasks.registering(Exec::class) {
+    group = "datagen"
+    description = "Generates combination forging and projection combining recipes."
+    inputs.file(processRecipeSource)
+    outputs.dir(generatedProcessRecipes)
+    commandLine(javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
+            .get().executablePath.asFile.absolutePath,
+        "--source", "17", processRecipeSource.absolutePath,
+        generatedProcessRecipes.get().asFile.absolutePath, "recipe")
+}
 
 group = property("mod.group").toString()
 version = artifactVersion
@@ -34,6 +46,7 @@ repositories {
     mavenCentral()
     maven("https://maven.neoforged.net/releases/")
     maven("https://maven.theillusivec4.top/")
+    maven("https://maven.blamejared.com/")
     maven("https://maven.latvian.dev/releases") {
         content { includeGroup("dev.latvian.mods"); includeGroup("dev.latvian.apps") }
     }
@@ -47,6 +60,10 @@ repositories {
 dependencies {
     compileOnly("top.theillusivec4.curios:curios-neoforge:${property("deps.curios")}:api")
     runtimeOnly("top.theillusivec4.curios:curios-neoforge:${property("deps.curios")}")
+    compileOnly("mezz.jei:jei-$mcVersion-neoforge-api:${property("deps.jei")}")
+    runtimeOnly("mezz.jei:jei-$mcVersion-neoforge:${property("deps.jei")}") {
+        exclude(group = "mezz.jei") // The full JEI jar already contains these split modules.
+    }
     compileOnly("dev.latvian.mods:kubejs-neoforge:${property("deps.kubejs")}")
     if (biomeCompat) {
         runtimeOnly("maven.modrinth:biomes-o-plenty:BtZKRp69")
@@ -66,6 +83,8 @@ tasks {
 
     processResources {
         dependsOn("stonecutterGenerate")
+        dependsOn(generateAstralProcessRecipes)
+        from(generatedProcessRecipes)
 
         val props = mapOf(
             "id" to project.property("mod.id"),
@@ -113,7 +132,7 @@ val verifyTerrain by tasks.registering(JavaExec::class) {
     description = "Checks the current spiral terrain and ecology."
     dependsOn(tasks.testClasses)
     classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "com.tony.deeprealmtheforth.worldgen.CurrentTerrainVerification"
+    mainClass = "com.tonywww.deeprealm4th.worldgen.CurrentTerrainVerification"
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
 }
 
@@ -122,11 +141,20 @@ val verifyAstral by tasks.registering(JavaExec::class) {
     description = "Checks astral layouts, percentage scores, and medal formulas."
     dependsOn(tasks.testClasses)
     classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "com.tony.deeprealmtheforth.astral.AstralCoreVerification"
+    mainClass = "com.tonywww.deeprealm4th.astral.AstralCoreVerification"
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
 }
 
-tasks.check { dependsOn(verifyTerrain, verifyAstral) }
+val verifyWorldgenOptimization by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Checks exact parity of optimized worldgen calculations."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "com.tonywww.deeprealm4th.worldgen.WorldgenOptimizationVerification"
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
+}
+
+tasks.check { dependsOn(verifyTerrain, verifyAstral, verifyWorldgenOptimization) }
 
 // Geometry assertions are executed by verifyTerrain, not a JUnit discovery engine.
 tasks.test { failOnNoDiscoveredTests = false }
@@ -136,7 +164,7 @@ val verifyHydrology by tasks.registering(JavaExec::class) {
     description = "Checks the current watershed against an exported registry climate."
     dependsOn(tasks.testClasses)
     classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "com.tony.deeprealmtheforth.worldgen.GlobalHydrologyVerification"
+    mainClass = "com.tonywww.deeprealm4th.worldgen.GlobalHydrologyVerification"
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
     args(rootProject.file("run/neoforge-server/biome-compat-v5/climate.tsv").absolutePath,
         rootProject.layout.buildDirectory.dir("reports/hydrology-current/neoforge").get().asFile.absolutePath)

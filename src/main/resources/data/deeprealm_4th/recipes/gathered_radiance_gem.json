@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "deeprealm_4th:telescopium_projection"
+    },
+    {
+      "item": "deeprealm_4th:star_slurry_blank"
+    },
+    {
+      "item": "deeprealm_4th:magic_gem"
+    }
+  ],
+  "result": {
+    "item": "deeprealm_4th:gathered_radiance_gem"
+  }
+}

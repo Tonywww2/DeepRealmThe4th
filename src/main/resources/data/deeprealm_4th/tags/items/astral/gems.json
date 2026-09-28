@@ -6,6 +6,7 @@
     "#deeprealm_4th:astral/conversion_gems",
     "#deeprealm_4th:astral/tradeoff_gems",
     "#deeprealm_4th:astral/percentage_gems",
-    "#deeprealm_4th:astral/player_condition_gems"
+    "#deeprealm_4th:astral/player_condition_gems",
+    "#deeprealm_4th:astral/advanced_gems"
   ]
 }

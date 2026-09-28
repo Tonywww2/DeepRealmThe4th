@@ -1,0 +1,4 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {"all": "deeprealm_4th:block/star_slurry_seep"}
+}

@@ -14,6 +14,7 @@ CATEGORIES = {
     "tradeoff_gems": "split_edge_gem steady_anchor_gem",
     "percentage_gems": "vein_amplitude_gem wandering_shadow_gem folded_reflection_gem linked_vein_gem cluster_mirror_gem looped_trace_gem",
     "player_condition_gems": "etched_step_gem full_breath_gem last_edge_gem well_fed_glow_gem nightglow_gem",
+    "advanced_gems": "convergent_facet_gem gathered_radiance_gem balance_crystal_gem etched_step_core full_breath_core convergent_facet_core gathered_radiance_core balance_core reflected_radiance_core sixfold_balance_core",
     "medals": "warrior_medal wayfarer_medal warden_medal",
     "containers": "base_container",
 }
@@ -33,7 +34,7 @@ def main() -> None:
         for name, values in tags.items():
             (directory / f"{name}.json").write_text(
                 json.dumps({"replace": False, "values": values}, ensure_ascii=False, indent=2) + "\n",
-                encoding="utf-8")
+                encoding="utf-8", newline="\n")
     print(f"Generated {len(tags)} astral type tags for both Minecraft versions")
 
 
