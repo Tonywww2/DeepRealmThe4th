@@ -6,7 +6,6 @@ import com.tonywww.deeprealm4th.platform.recipe.ProjectionRecipe;
 
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
@@ -23,7 +22,6 @@ public final class ProjectionCombining {
         if (frame.isEmpty() || material.isEmpty()) return Result.rejected();
         List<ProjectionFrameData.Absorbed> absorbed = ProjectionFrameData.read(frame);
         if (absorbed.size() >= 9) return Result.rejected();
-        String materialId = BuiltInRegistries.ITEM.getKey(material.getItem()).toString();
         List<ProjectionFrameData.Absorbed> next = new ArrayList<>(absorbed);
         next.add(new ProjectionFrameData.Absorbed(material.copyWithCount(1), direction));
         var steps = ProjectionFrameData.steps(next);

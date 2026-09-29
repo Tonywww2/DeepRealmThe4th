@@ -86,7 +86,7 @@ public final class ProjectionFrameData {
 
     public static List<ProjectionRecipe.Step> steps(List<Absorbed> absorbed) {
         return absorbed.stream().map(step -> new ProjectionRecipe.Step(
-                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(step.stack().getItem()).toString(),
+                step.stack().copyWithCount(1),
                 step.direction())).toList();
     }
 }

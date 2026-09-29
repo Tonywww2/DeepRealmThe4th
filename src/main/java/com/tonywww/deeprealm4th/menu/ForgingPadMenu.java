@@ -7,7 +7,6 @@ import com.tonywww.deeprealm4th.platform.registry.AstralBlockRegistration;
 import com.tonywww.deeprealm4th.platform.registry.AstralMenuRegistration;
 import java.util.Comparator;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -29,7 +28,7 @@ public final class ForgingPadMenu extends AbstractContainerMenu {
     private final Player player;
     private final SimpleContainerData progress = new SimpleContainerData(1);
     private long lastAcceptedTick = Long.MIN_VALUE;
-    private long inputSignature = Long.MIN_VALUE;
+    private ItemStack[] inputSnapshot;
 
     public ForgingPadMenu(int id, Inventory inventory, BlockPos pos, Container pad) {
         super(AstralMenuRegistration.FORGING_PAD.get(), id);
@@ -38,16 +37,16 @@ public final class ForgingPadMenu extends AbstractContainerMenu {
         this.player = inventory.player;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 4; col++) {
-                addSlot(new Slot(pad, row * 4 + col, 15 + col * 18, 29 + row * 18));
+                addSlot(new Slot(pad, row * 4 + col, 47 + col * 18, 29 + row * 18));
             }
         }
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(inventory, col + (row + 1) * 9, 39 + col * 18, 121 + row * 18));
+                addSlot(new Slot(inventory, col + (row + 1) * 9, 64 + col * 18, 121 + row * 18));
             }
         }
         for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(inventory, col, 39 + col * 18, 179));
+            addSlot(new Slot(inventory, col, 64 + col * 18, 179));
         }
         addDataSlots(progress);
     }
@@ -74,16 +73,14 @@ public final class ForgingPadMenu extends AbstractContainerMenu {
     }
 
     private void refreshInputs() {
-        long signature = 1125899906842597L;
+        boolean changed = inputSnapshot == null;
+        ItemStack[] current = new ItemStack[ForgingPadBlockEntity.SLOTS];
         for (int i = 0; i < ForgingPadBlockEntity.SLOTS; i++) {
-            ItemStack stack = pad.getItem(i);
-            signature = signature * 31 + BuiltInRegistries.ITEM.getKey(stack.getItem()).hashCode();
-            signature = signature * 31 + stack.getCount();
+            current[i] = pad.getItem(i).copy();
+            if (!changed && !ItemStack.matches(inputSnapshot[i], current[i])) changed = true;
         }
-        if (signature != inputSignature) {
-            inputSignature = signature;
-            progress.set(0, 0);
-        }
+        if (changed) progress.set(0, 0);
+        inputSnapshot = current;
     }
 
     @Override public boolean clickMenuButton(Player player, int button) {
@@ -120,7 +117,7 @@ public final class ForgingPadMenu extends AbstractContainerMenu {
                 if (!output.isEmpty()) Block.popResource(player.level(), pos, output);
             }
             progress.set(0, 0);
-            inputSignature = Long.MIN_VALUE;
+            inputSnapshot = null;
         }
         broadcastChanges();
         return true;

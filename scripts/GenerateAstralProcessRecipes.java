@@ -11,6 +11,7 @@ public final class GenerateAstralProcessRecipes {
     private static final String MATERIAL_ON_FRAME = "material_on_frame";
     private static final String FRAME_ON_MATERIAL = "frame_on_material";
     private static Path output;
+    private static String stackItemKey;
 
     private GenerateAstralProcessRecipes() {}
 
@@ -19,6 +20,7 @@ public final class GenerateAstralProcessRecipes {
             throw new IllegalArgumentException("Expected output directory and recipe path name");
         }
         output = Path.of(args[0], "data", "deeprealm_4th", args[1]);
+        stackItemKey = args[1].equals("recipes") ? "item" : "id";
         Files.createDirectories(output);
 
         projection("astral_lens", step("minecraft:glass_pane", MATERIAL_ON_FRAME),
@@ -67,10 +69,12 @@ public final class GenerateAstralProcessRecipes {
 
     private static void projection(String name, Step... steps) throws IOException {
         StringBuilder json = new StringBuilder("{\n  \"type\": \"deeprealm_4th:projection_combining\",\n")
-                .append("  \"result\": \"").append(id(name)).append("\",\n  \"steps\": [\n");
+                .append("  \"result\": {\"").append(stackItemKey).append("\": \"")
+                .append(id(name)).append("\"},\n  \"steps\": [\n");
         for (int i = 0; i < steps.length; i++) {
             Step step = steps[i];
-            json.append("    {\"item\": \"").append(step.item()).append("\", \"direction\": \"")
+            json.append("    {\"stack\": {\"").append(stackItemKey).append("\": \"")
+                    .append(step.item()).append("\"}, \"direction\": \"")
                     .append(step.direction()).append("\"}")
                     .append(i + 1 == steps.length ? "\n" : ",\n");
         }
@@ -83,11 +87,13 @@ public final class GenerateAstralProcessRecipes {
         ingredients.merge(id(base), 1, Integer::sum);
         for (String material : materials) ingredients.merge(material, 1, Integer::sum);
         StringBuilder json = new StringBuilder("{\n  \"type\": \"deeprealm_4th:combination_forging\",\n")
-                .append("  \"result\": \"").append(id(name)).append("\",\n  \"ingredients\": [\n");
+                .append("  \"result\": {\"").append(stackItemKey).append("\": \"")
+                .append(id(name)).append("\"},\n  \"ingredients\": [\n");
         int index = 0;
         for (var entry : ingredients.entrySet()) {
-            json.append("    {\"item\": \"").append(entry.getKey()).append("\", \"count\": ")
-                    .append(entry.getValue()).append("}")
+            json.append("    {\"stack\": {\"").append(stackItemKey).append("\": \"")
+                    .append(entry.getKey()).append("\", \"count\": ")
+                    .append(entry.getValue()).append("}}")
                     .append(++index == ingredients.size() ? "\n" : ",\n");
         }
         json.append("  ],\n  \"clicks\": ").append(clicks)

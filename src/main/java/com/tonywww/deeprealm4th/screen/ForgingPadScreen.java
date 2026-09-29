@@ -12,18 +12,18 @@ import net.minecraft.world.entity.player.Inventory;
 
 /** Native-resolution texture background with a separate hammer button atlas. */
 public final class ForgingPadScreen extends VersionedMenuScreen<ForgingPadMenu> {
-    private static final int BUTTON_X = 173;
-    private static final int BUTTON_Y = 49;
+    private static final int BUTTON_X = 131;
+    private static final int BUTTON_Y = 47;
     private static final ResourceLocation BACKGROUND = PlatformIds.id("textures/gui/forging_pad_background.png");
     private static final ResourceLocation HAMMER_BUTTON = PlatformIds.id("textures/gui/forging_hammer_button.png");
 
     public ForgingPadScreen(ForgingPadMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        imageWidth = 236;
+        imageWidth = 286;
         imageHeight = 205;
-        titleLabelX = 9;
+        titleLabelX = 45;
         titleLabelY = 6;
-        inventoryLabelX = 39;
+        inventoryLabelX = 64;
         inventoryLabelY = 109;
     }
 
@@ -35,18 +35,19 @@ public final class ForgingPadScreen extends VersionedMenuScreen<ForgingPadMenu> 
         if (recipe == null) return;
         Component name = recipe.nameKey().isEmpty() ? recipe.output().getHoverName()
                 : Component.translatable(recipe.nameKey());
-        String display = font.plainSubstrByWidth(name.getString(), 112);
-        if (display.length() < name.getString().length()) display += "...";
-        graphics.drawString(font, display, x + 113, y + 26, 0xFF272027, false);
-        graphics.renderItem(recipe.output(), x + 125, y + 52);
+        String display = font.plainSubstrByWidth(name.getString(), 75);
+        if (display.length() < name.getString().length())
+            display = font.plainSubstrByWidth(name.getString(), 75 - font.width("...")) + "...";
+        graphics.drawString(font, display, x + 165, y + 25, 0xFF272027, false);
+        graphics.renderItem(recipe.output(), x + 195, y + 46);
         boolean hovered = mouseX >= x + BUTTON_X && mouseX < x + BUTTON_X + 25
                 && mouseY >= y + BUTTON_Y && mouseY < y + BUTTON_Y + 25;
         graphics.blit(HAMMER_BUTTON, x + BUTTON_X, y + BUTTON_Y,
                 hovered ? 25 : 0, 0, 25, 25, 50, 25);
         graphics.drawString(font, Component.translatable("screen.deeprealm_4th.forging.progress",
-                        menu.clicksDone(), recipe.clicks()), x + 113, y + 83, 0xFF272027, false);
+                        menu.clicksDone(), recipe.clicks()), x + 165, y + 67, 0xFF272027, false);
         graphics.drawString(font, Component.translatable("screen.deeprealm_4th.forging.levels",
-                        recipe.levels()), x + 113, y + 94, 0xFF573B32, false);
+                        recipe.levels()), x + 165, y + 78, 0xFF573B32, false);
     }
 
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {

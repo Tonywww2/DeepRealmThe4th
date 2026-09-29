@@ -6,10 +6,8 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.tonywww.deeprealm4th.platform.registry.AstralProcessRegistration;
-import com.tonywww.deeprealm4th.astral.process.ProcessItemIds;
 import com.tonywww.deeprealm4th.astral.process.ProjectionRules;
 import java.util.List;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
@@ -18,6 +16,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 
 //? if forge {
+import net.minecraftforge.common.crafting.CraftingHelper;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.util.GsonHelper;
@@ -40,58 +39,66 @@ public final class ProjectionRecipe implements Recipe<
         > {
     public enum Direction { MATERIAL_ON_FRAME, FRAME_ON_MATERIAL }
 
-    public record Step(String itemId, Direction direction) {
+    public record Step(ItemStack stack, Direction direction) {
         //? if !forge {
         /*public static final Codec<Step> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                Codec.STRING.fieldOf("item").forGetter(Step::itemId),
+                ItemStack.STRICT_CODEC.fieldOf("stack").forGetter(Step::stack),
                 Codec.STRING.fieldOf("direction").forGetter(step -> step.direction().name().toLowerCase())
-        ).apply(instance, (item, direction) -> new Step(item,
+        ).apply(instance, (stack, direction) -> new Step(stack,
                 Direction.valueOf(direction.toUpperCase()))));
         *///?}
         public Step {
-            ProcessItemIds.requireValid(itemId);
+            if (stack == null || stack.isEmpty() || stack.getCount() != 1)
+                throw new IllegalArgumentException("Projection step requires one material stack");
+            stack = stack.copy();
             if (direction == null) throw new IllegalArgumentException("Missing projection direction");
         }
+        @Override public ItemStack stack() { return stack.copy(); }
     }
 
-    private final String resultId;
+    private final ItemStack result;
     private final List<Step> steps;
     //? if forge {
     private final ResourceLocation id;
     //?} else {
     /*public static final MapCodec<ProjectionRecipe> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            Codec.STRING.fieldOf("result").forGetter(ProjectionRecipe::resultId),
+            ItemStack.STRICT_CODEC.fieldOf("result").forGetter(ProjectionRecipe::output),
             Step.CODEC.listOf().fieldOf("steps").forGetter(ProjectionRecipe::steps)
     ).apply(instance, ProjectionRecipe::new));
     *///?}
 
     //? if forge {
-    public ProjectionRecipe(ResourceLocation id, String resultId, List<Step> steps) {
+    public ProjectionRecipe(ResourceLocation id, ItemStack result, List<Step> steps) {
         this.id = id;
-        this.resultId = resultId;
+        this.result = result.copy();
         this.steps = List.copyOf(steps);
         validate();
     }
     //?} else {
-    /*public ProjectionRecipe(String resultId, List<Step> steps) {
-        this.resultId = resultId;
+    /*public ProjectionRecipe(ItemStack result, List<Step> steps) {
+        this.result = result.copy();
         this.steps = List.copyOf(steps);
         validate();
     }
     *///?}
 
     private void validate() {
-        ProjectionRules.validate(resultId, steps);
+        ProjectionRules.validate(result, steps);
     }
 
-    public String resultId() { return resultId; }
     public List<Step> steps() { return steps; }
     public ItemStack output() {
-        return ProcessItemIds.output(resultId);
+        return result.copy();
     }
 
     public boolean matchesPrefix(List<Step> input) {
-        return ProjectionRules.matchesPrefix(steps, input);
+        if (input.size() > steps.size()) return false;
+        for (int i = 0; i < input.size(); i++) {
+            Step expected = steps.get(i), actual = input.get(i);
+            if (expected.direction() != actual.direction()
+                    || !ItemStack.matches(expected.stack(), actual.stack())) return false;
+        }
+        return true;
     }
 
     @Override public boolean matches(
@@ -121,26 +128,26 @@ public final class ProjectionRecipe implements Recipe<
             List<Step> steps = new java.util.ArrayList<>();
             for (var element : entries) {
                 JsonObject step = element.getAsJsonObject();
-                steps.add(new Step(GsonHelper.getAsString(step, "item"),
+                steps.add(new Step(CraftingHelper.getItemStack(GsonHelper.getAsJsonObject(step, "stack"), true, true),
                         Direction.valueOf(GsonHelper.getAsString(step, "direction").toUpperCase())));
             }
-            return new ProjectionRecipe(id, GsonHelper.getAsString(json, "result"), steps);
+            return new ProjectionRecipe(id, CraftingHelper.getItemStack(GsonHelper.getAsJsonObject(json, "result"), true, true), steps);
         }
         @Override public ProjectionRecipe fromNetwork(ResourceLocation id, FriendlyByteBuf buffer) {
-            String result = buffer.readUtf();
+            ItemStack result = buffer.readItem();
             int count = buffer.readVarInt();
             if (count < 2 || count > 9) throw new IllegalArgumentException("Invalid projection step count");
             List<Step> steps = new java.util.ArrayList<>();
             for (int i = 0; i < count; i++) {
-                steps.add(new Step(buffer.readUtf(), Direction.values()[buffer.readVarInt()]));
+                steps.add(new Step(buffer.readItem(), Direction.values()[buffer.readVarInt()]));
             }
             return new ProjectionRecipe(id, result, steps);
         }
         @Override public void toNetwork(FriendlyByteBuf buffer, ProjectionRecipe recipe) {
-            buffer.writeUtf(recipe.resultId);
+            buffer.writeItem(recipe.result);
             buffer.writeVarInt(recipe.steps.size());
             for (Step step : recipe.steps) {
-                buffer.writeUtf(step.itemId());
+                buffer.writeItem(step.stack());
                 buffer.writeVarInt(step.direction().ordinal());
             }
         }

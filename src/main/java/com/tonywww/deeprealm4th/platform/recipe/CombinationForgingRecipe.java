@@ -14,7 +14,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
@@ -22,6 +21,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 
 //? if forge {
+import net.minecraftforge.common.crafting.CraftingHelper;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.util.GsonHelper;
@@ -33,7 +33,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.crafting.RecipeInput;
 *///?}
 
-/** Shapeless twelve-slot forging with per-slot stack counts and configurable hammering. */
+/** Shapeless twelve-slot forging with exact stack data and per-slot counts. */
 public final class CombinationForgingRecipe implements Recipe<
         //? if forge {
         Container
@@ -41,45 +41,45 @@ public final class CombinationForgingRecipe implements Recipe<
         /*RecipeInput
         *///?}
         > {
-    public record Input(String item, String tag, int count) {
+    /** A required stack, or an explicit tag alternative with a required count. */
+    public record Input(ItemStack stack, String tag, int tagCount) {
         //? if !forge {
         /*public static final Codec<Input> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                Codec.STRING.optionalFieldOf("item", "").forGetter(Input::item),
+                ItemStack.STRICT_CODEC.optionalFieldOf("stack", ItemStack.EMPTY).forGetter(Input::stack),
                 Codec.STRING.optionalFieldOf("tag", "").forGetter(Input::tag),
-                Codec.INT.optionalFieldOf("count", 1).forGetter(Input::count)
+                Codec.INT.optionalFieldOf("count", 1).forGetter(Input::tagCount)
         ).apply(instance, Input::new));
         *///?}
 
         public Input {
-            if (item == null || tag == null || item.isEmpty() == tag.isEmpty()) {
-                throw new IllegalArgumentException("Exactly one of item or tag is required");
-            }
-            ProcessItemIds.requireValid(item.isEmpty() ? tag : item);
-            if (count < 1) throw new IllegalArgumentException("Input count must be positive");
+            if (stack == null || tag == null) throw new IllegalArgumentException("Missing forging input");
+            stack = stack.copy();
+            if (stack.isEmpty() == tag.isEmpty())
+                throw new IllegalArgumentException("Exactly one of stack or tag is required");
+            if (!tag.isEmpty()) ProcessItemIds.requireValid(tag);
+            if (tagCount < 1 || tagCount > 64 || !stack.isEmpty() && tagCount != 1)
+                throw new IllegalArgumentException("Invalid forging input count");
         }
 
-        public boolean accepts(ItemStack stack) {
-            if (stack.isEmpty() || stack.getCount() < count) return false;
-            ResourceLocation id = ResourceLocation.tryParse(item.isEmpty() ? tag : item);
-            return item.isEmpty() ? stack.is(TagKey.create(Registries.ITEM, id))
-                    : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(id);
+        @Override public ItemStack stack() { return stack.copy(); }
+        public int count() { return tag.isEmpty() ? stack.getCount() : tagCount; }
+
+        public boolean accepts(ItemStack candidate) {
+            if (candidate.isEmpty() || candidate.getCount() < count()) return false;
+            return tag.isEmpty() ? ItemStack.matches(stack.copyWithCount(1), candidate.copyWithCount(1))
+                    : candidate.is(TagKey.create(Registries.ITEM, ResourceLocation.tryParse(tag)));
         }
 
         public ItemStack displayStack() {
-            if (!item.isEmpty()) {
-                ItemStack stack = ProcessItemIds.output(item);
-                if (!stack.isEmpty()) stack.setCount(count);
-                return stack;
-            }
+            if (tag.isEmpty()) return stack();
             var entry = net.minecraft.core.registries.BuiltInRegistries.ITEM.getTag(TagKey.create(
                     Registries.ITEM, ResourceLocation.tryParse(tag)));
             return entry.flatMap(items -> items.stream().findFirst())
-                    .map(holder -> new ItemStack(holder.value(), count)).orElse(ItemStack.EMPTY);
+                    .map(holder -> new ItemStack(holder.value(), tagCount)).orElse(ItemStack.EMPTY);
         }
     }
 
-    private final String resultId;
-    private final int resultCount;
+    private final ItemStack result;
     private final List<Input> inputs;
     private final int clicks;
     private final int cooldown;
@@ -89,8 +89,7 @@ public final class CombinationForgingRecipe implements Recipe<
     private final ResourceLocation id;
     //?} else {
     /*public static final MapCodec<CombinationForgingRecipe> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            Codec.STRING.fieldOf("result").forGetter(CombinationForgingRecipe::resultId),
-            Codec.INT.optionalFieldOf("result_count", 1).forGetter(CombinationForgingRecipe::resultCount),
+            ItemStack.STRICT_CODEC.fieldOf("result").forGetter(CombinationForgingRecipe::output),
             Input.CODEC.listOf().fieldOf("ingredients").forGetter(CombinationForgingRecipe::inputs),
             Codec.INT.optionalFieldOf("clicks", 3).forGetter(CombinationForgingRecipe::clicks),
             Codec.INT.optionalFieldOf("cooldown", 10).forGetter(CombinationForgingRecipe::cooldown),
@@ -100,11 +99,10 @@ public final class CombinationForgingRecipe implements Recipe<
     *///?}
 
     //? if forge {
-    public CombinationForgingRecipe(ResourceLocation id, String resultId, int resultCount, List<Input> inputs,
+    public CombinationForgingRecipe(ResourceLocation id, ItemStack result, List<Input> inputs,
                                     int clicks, int cooldown, int levels, String nameKey) {
         this.id = id;
-        this.resultId = ProcessItemIds.requireValid(resultId);
-        this.resultCount = resultCount;
+        this.result = result.copy();
         this.inputs = List.copyOf(inputs);
         this.clicks = clicks;
         this.cooldown = cooldown;
@@ -113,10 +111,9 @@ public final class CombinationForgingRecipe implements Recipe<
         validate();
     }
     //?} else {
-    /*public CombinationForgingRecipe(String resultId, int resultCount, List<Input> inputs,
+    /*public CombinationForgingRecipe(ItemStack result, List<Input> inputs,
                                     int clicks, int cooldown, int levels, String nameKey) {
-        this.resultId = ProcessItemIds.requireValid(resultId);
-        this.resultCount = resultCount;
+        this.result = result.copy();
         this.inputs = List.copyOf(inputs);
         this.clicks = clicks;
         this.cooldown = cooldown;
@@ -127,25 +124,20 @@ public final class CombinationForgingRecipe implements Recipe<
     *///?}
 
     private void validate() {
+        if (result.isEmpty() || result.getCount() > result.getMaxStackSize())
+            throw new IllegalArgumentException("Invalid forging result stack");
         if (inputs.isEmpty() || inputs.size() > 12) throw new IllegalArgumentException("Forging needs 1..12 inputs");
-        if (resultCount < 1 || resultCount > 64) throw new IllegalArgumentException("Invalid result count");
         if (clicks < 1 || clicks > 64) throw new IllegalArgumentException("Clicks must be 1..64");
         if (cooldown < 0 || cooldown > 1200) throw new IllegalArgumentException("Invalid click cooldown");
         if (levels < 0 || levels > 10000) throw new IllegalArgumentException("Invalid level cost");
     }
 
-    public String resultId() { return resultId; }
-    public int resultCount() { return resultCount; }
     public List<Input> inputs() { return inputs; }
     public int clicks() { return clicks; }
     public int cooldown() { return cooldown; }
     public int levels() { return levels; }
     public String nameKey() { return nameKey; }
-    public ItemStack output() {
-        ItemStack stack = ProcessItemIds.output(resultId);
-        if (!stack.isEmpty()) stack.setCount(resultCount);
-        return stack;
-    }
+    public ItemStack output() { return result.copy(); }
 
     /** Returns the slot index for each ingredient, or null when any stack or count differs. */
     public int[] assignment(Container inventory) {
@@ -203,32 +195,30 @@ public final class CombinationForgingRecipe implements Recipe<
             List<Input> inputs = new ArrayList<>();
             for (var value : array) {
                 JsonObject entry = value.getAsJsonObject();
-                inputs.add(new Input(GsonHelper.getAsString(entry, "item", ""),
+                inputs.add(new Input(entry.has("stack") ? CraftingHelper.getItemStack(GsonHelper.getAsJsonObject(entry, "stack"), true, true)
+                                : ItemStack.EMPTY,
                         GsonHelper.getAsString(entry, "tag", ""), GsonHelper.getAsInt(entry, "count", 1)));
             }
-            return new CombinationForgingRecipe(id, GsonHelper.getAsString(json, "result"),
-                    GsonHelper.getAsInt(json, "result_count", 1), inputs,
-                    GsonHelper.getAsInt(json, "clicks", 3), GsonHelper.getAsInt(json, "cooldown", 10),
+            return new CombinationForgingRecipe(id, CraftingHelper.getItemStack(GsonHelper.getAsJsonObject(json, "result"), true, true),
+                    inputs, GsonHelper.getAsInt(json, "clicks", 3), GsonHelper.getAsInt(json, "cooldown", 10),
                     GsonHelper.getAsInt(json, "levels", 0), GsonHelper.getAsString(json, "name_key", ""));
         }
         @Override public CombinationForgingRecipe fromNetwork(ResourceLocation id, FriendlyByteBuf buffer) {
-            String result = buffer.readUtf();
-            int resultCount = buffer.readVarInt();
+            ItemStack result = buffer.readItem();
             int size = buffer.readVarInt();
             if (size < 1 || size > 12) throw new IllegalArgumentException("Invalid forging input count");
             List<Input> inputs = new ArrayList<>();
-            for (int i = 0; i < size; i++) inputs.add(new Input(buffer.readUtf(), buffer.readUtf(), buffer.readVarInt()));
-            return new CombinationForgingRecipe(id, result, resultCount, inputs,
+            for (int i = 0; i < size; i++) inputs.add(new Input(buffer.readItem(), buffer.readUtf(), buffer.readVarInt()));
+            return new CombinationForgingRecipe(id, result, inputs,
                     buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readUtf());
         }
         @Override public void toNetwork(FriendlyByteBuf buffer, CombinationForgingRecipe recipe) {
-            buffer.writeUtf(recipe.resultId);
-            buffer.writeVarInt(recipe.resultCount);
+            buffer.writeItem(recipe.result);
             buffer.writeVarInt(recipe.inputs.size());
             for (Input input : recipe.inputs) {
-                buffer.writeUtf(input.item());
+                buffer.writeItem(input.stack());
                 buffer.writeUtf(input.tag());
-                buffer.writeVarInt(input.count());
+                buffer.writeVarInt(input.tagCount());
             }
             buffer.writeVarInt(recipe.clicks);
             buffer.writeVarInt(recipe.cooldown);

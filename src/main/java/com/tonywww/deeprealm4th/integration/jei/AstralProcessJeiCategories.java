@@ -12,11 +12,9 @@ import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 /** Compact JEI views for all datapack recipes of the two new process types. */
 public final class AstralProcessJeiCategories {
@@ -29,12 +27,6 @@ public final class AstralProcessJeiCategories {
             "deeprealm_4th", "projection_combining", ProjectionRecipe.class);
 
     private AstralProcessJeiCategories() {}
-
-    private static ItemStack item(String id) {
-        ResourceLocation key = ResourceLocation.tryParse(id);
-        return key == null || !BuiltInRegistries.ITEM.containsKey(key)
-                ? ItemStack.EMPTY : new ItemStack(BuiltInRegistries.ITEM.get(key));
-    }
 
     private static void arrow(GuiGraphics graphics, int x, int y, boolean right) {
         graphics.blit(ICONS, x, y, right ? 0 : 25, 0, 25, 16, 64, 16);
@@ -96,7 +88,7 @@ public final class AstralProcessJeiCategories {
                 boolean materialOnFrame = recipe.steps().get(i).direction()
                         == ProjectionRecipe.Direction.MATERIAL_ON_FRAME;
                 builder.addInputSlot(materialOnFrame ? 27 : 108, 4 + i * 19)
-                        .addItemStack(item(recipe.steps().get(i).itemId()));
+                        .addItemStack(recipe.steps().get(i).stack());
             }
             builder.addOutputSlot(141, 181).addItemStack(recipe.output());
         }
