@@ -14,6 +14,8 @@ import net.minecraft.world.entity.player.Inventory;
 public final class ForgingPadScreen extends VersionedMenuScreen<ForgingPadMenu> {
     private static final int BUTTON_X = 131;
     private static final int BUTTON_Y = 47;
+    private static final int RESULT_SLOT_X = 194;
+    private static final int RESULT_SLOT_Y = 45;
     private static final ResourceLocation BACKGROUND = PlatformIds.id("textures/gui/forging_pad_background.png");
     private static final ResourceLocation HAMMER_BUTTON = PlatformIds.id("textures/gui/forging_hammer_button.png");
 
@@ -39,7 +41,7 @@ public final class ForgingPadScreen extends VersionedMenuScreen<ForgingPadMenu> 
         if (display.length() < name.getString().length())
             display = font.plainSubstrByWidth(name.getString(), 75 - font.width("...")) + "...";
         graphics.drawString(font, display, x + 165, y + 25, 0xFF272027, false);
-        graphics.renderItem(recipe.output(), x + 195, y + 46);
+        graphics.renderItem(recipe.output(), x + RESULT_SLOT_X + 1, y + RESULT_SLOT_Y + 1);
         boolean hovered = mouseX >= x + BUTTON_X && mouseX < x + BUTTON_X + 25
                 && mouseY >= y + BUTTON_Y && mouseY < y + BUTTON_Y + 25;
         graphics.blit(HAMMER_BUTTON, x + BUTTON_X, y + BUTTON_Y,
@@ -54,6 +56,11 @@ public final class ForgingPadScreen extends VersionedMenuScreen<ForgingPadMenu> 
         renderVersionedBackground(graphics, mouseX, mouseY, partialTick);
         super.render(graphics, mouseX, mouseY, partialTick);
         renderTooltip(graphics, mouseX, mouseY);
+        if (mouseX >= leftPos + RESULT_SLOT_X && mouseX < leftPos + RESULT_SLOT_X + 18
+                && mouseY >= topPos + RESULT_SLOT_Y && mouseY < topPos + RESULT_SLOT_Y + 18) {
+            CombinationForgingRecipe recipe = menu.matchingRecipe();
+            if (recipe != null) graphics.renderTooltip(font, recipe.output(), mouseX, mouseY);
+        }
     }
 
     @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
