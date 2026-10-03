@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "deeprealm_4th:star_source",
+    "deeprealm_4th:small_star_slurry_bud",
+    "deeprealm_4th:medium_star_slurry_bud",
+    "deeprealm_4th:large_star_slurry_bud",
+    "deeprealm_4th:star_slurry_cluster"
+  ]
+}

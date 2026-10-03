@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "deeprealm_4th:block/star_slurry_cluster",
+      "x": 180
+    },
+    "facing=up": {
+      "model": "deeprealm_4th:block/star_slurry_cluster"
+    },
+    "facing=north": {
+      "model": "deeprealm_4th:block/star_slurry_cluster",
+      "x": 90
+    },
+    "facing=east": {
+      "model": "deeprealm_4th:block/star_slurry_cluster",
+      "x": 90,
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deeprealm_4th:block/star_slurry_cluster",
+      "x": 90,
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deeprealm_4th:block/star_slurry_cluster",
+      "x": 90,
+      "y": 270
+    }
+  }
+}

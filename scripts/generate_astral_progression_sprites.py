@@ -11,7 +11,6 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "art/source/item"
 TEXTURES = ROOT / "src/main/resources/assets/deeprealm_4th/textures/item"
 MODELS = ROOT / "src/main/resources/assets/deeprealm_4th/models/item"
-BLOCK = ROOT / "src/main/resources/assets/deeprealm_4th/textures/block"
 PREVIEW = ROOT / "docs/assets/astral-progression-16x-preview.png"
 CLEAR = (0, 0, 0, 0)
 
@@ -85,24 +84,6 @@ def frame():
     return p
 
 
-def seep():
-    p = empty()
-    shell = (48, 41, 64)
-    fill = (109, 39, 143)
-    glint = (216, 140, 243)
-    for y in range(16):
-        for x in range(16):
-            n = (x * 19 + y * 37 + x * y * 7) % 11
-            pixel(p, x, y, (56 + n, 51 + n, 66 + n))
-    for y in range(4, 12):
-        for x in range(3, 13):
-            if (x - 8) ** 2 + (y - 8) ** 2 < 22:
-                pixel(p, x, y, shell if x in (3, 12) or y in (4, 11) else fill)
-    for x, y in ((5, 6), (6, 5), (7, 5), (9, 8), (10, 9), (7, 10)):
-        pixel(p, x, y, glint)
-    return p
-
-
 def save_item(item_id, pixels):
     for directory in (SOURCE, TEXTURES):
         base.write_png(directory / f"{item_id}.png", pixels)
@@ -129,14 +110,12 @@ def main():
         pixels = base.draw(primary, accent, shape, mark)
         save_item(item_id, pixels)
         sprites.append(pixels)
-    BLOCK.mkdir(parents=True, exist_ok=True)
-    base.write_png(BLOCK / "star_slurry_seep.png", seep())
     # Separate preview from the previous expansion sheet.
     old = base.PREVIEW
     base.PREVIEW = PREVIEW
     base.preview(sprites)
     base.PREVIEW = old
-    print(f"Generated {len(sprites)} independent 16x16 item sprites and one 16x16 block texture")
+    print(f"Generated {len(sprites)} independent 16x16 item sprites")
 
 
 if __name__ == "__main__":

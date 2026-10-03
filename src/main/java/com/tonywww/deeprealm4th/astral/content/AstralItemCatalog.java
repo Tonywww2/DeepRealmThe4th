@@ -103,9 +103,13 @@ public final class AstralItemCatalog {
     public static final Supplier<Item> NIGHTGLOW_GEM = conditionGem("nightglow_gem",
             "night_vision", ScoreType.PERCEPTION, 2);
 
-    public static final Supplier<Item> STAR_SLURRY = material("star_slurry", "seep");
-    public static final Supplier<Item> STAR_SLURRY_SEEP = registerItem("star_slurry_seep",
-            () -> new BlockItem(AstralBlockRegistration.STAR_SLURRY_SEEP.get(), new Item.Properties()));
+    public static final Supplier<Item> STAR_SLURRY = material("star_slurry", "crystal");
+    public static final Supplier<Item> STAR_SLURRY_CRYSTAL = material("star_slurry_crystal");
+    public static final Supplier<Item> STAR_SOURCE = blockItem("star_source", AstralBlockRegistration.STAR_SOURCE);
+    public static final Supplier<Item> SMALL_STAR_SLURRY_BUD = blockItem("small_star_slurry_bud", AstralBlockRegistration.SMALL_STAR_SLURRY_BUD);
+    public static final Supplier<Item> MEDIUM_STAR_SLURRY_BUD = blockItem("medium_star_slurry_bud", AstralBlockRegistration.MEDIUM_STAR_SLURRY_BUD);
+    public static final Supplier<Item> LARGE_STAR_SLURRY_BUD = blockItem("large_star_slurry_bud", AstralBlockRegistration.LARGE_STAR_SLURRY_BUD);
+    public static final Supplier<Item> STAR_SLURRY_CLUSTER = blockItem("star_slurry_cluster", AstralBlockRegistration.STAR_SLURRY_CLUSTER);
     public static final Supplier<Item> FORGING_PAD = registerItem("forging_pad",
             () -> new BlockItem(AstralBlockRegistration.FORGING_PAD.get(), new Item.Properties()));
     public static final Supplier<Item> MIMETIC_STAR_SLURRY = material("mimetic_star_slurry", "mimetic");
@@ -163,6 +167,10 @@ public final class AstralItemCatalog {
 
     private static Supplier<Item> material(String id) {
         return material(id, null);
+    }
+
+    private static Supplier<Item> blockItem(String id, Supplier<? extends net.minecraft.world.level.block.Block> block) {
+        return registerItem(id, () -> new BlockItem(block.get(), new Item.Properties()));
     }
 
     private static Supplier<Item> material(String id, String hint) {

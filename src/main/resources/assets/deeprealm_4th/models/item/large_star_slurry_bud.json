@@ -1,0 +1,15 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "deeprealm_4th:block/large_star_slurry_bud"
+  },
+  "display": {
+    "head": {
+      "translation": [
+        0,
+        14,
+        -5
+      ]
+    }
+  }
+}

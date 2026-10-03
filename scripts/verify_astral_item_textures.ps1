@@ -13,15 +13,11 @@ $itemIds = [regex]::Matches($registration, '(?:registerItem|scoreGem|regionalGem
 foreach ($id in $itemIds) {
     $modelPath = Join-Path $modelDirectory "$id.json"
     $texturePath = Join-Path $textureDirectory "$id.png"
-    if ($id -eq 'star_slurry_seep') {
-        $texturePath = Join-Path $root "src/main/resources/assets/$namespace/textures/block/star_slurry_seep.png"
-    }
     if (-not (Test-Path -LiteralPath $modelPath)) { throw "Missing item model: $modelPath" }
     if (-not (Test-Path -LiteralPath $texturePath)) { throw "Missing item texture: $texturePath" }
     $model = Get-Content -Raw -Encoding utf8 $modelPath | ConvertFrom-Json
     $dynamicFrame = $id -eq 'projection_frame' -and $model.parent -eq 'minecraft:builtin/entity'
-    $blockItem = $id -eq 'star_slurry_seep' -and $model.parent -eq "$namespace`:block/star_slurry_seep"
-    if (-not ($dynamicFrame -or $blockItem) -and $model.textures.layer0 -ne "$namespace`:item/$id") {
+    if (-not $dynamicFrame -and $model.textures.layer0 -ne "$namespace`:item/$id") {
         throw "Item model $id does not use its own texture"
     }
 

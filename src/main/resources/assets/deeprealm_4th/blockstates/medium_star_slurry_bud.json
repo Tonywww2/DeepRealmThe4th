@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "deeprealm_4th:block/medium_star_slurry_bud",
+      "x": 180
+    },
+    "facing=up": {
+      "model": "deeprealm_4th:block/medium_star_slurry_bud"
+    },
+    "facing=north": {
+      "model": "deeprealm_4th:block/medium_star_slurry_bud",
+      "x": 90
+    },
+    "facing=east": {
+      "model": "deeprealm_4th:block/medium_star_slurry_bud",
+      "x": 90,
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deeprealm_4th:block/medium_star_slurry_bud",
+      "x": 90,
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deeprealm_4th:block/medium_star_slurry_bud",
+      "x": 90,
+      "y": 270
+    }
+  }
+}

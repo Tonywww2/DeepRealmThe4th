@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "deeprealm_4th:block/star_source"
+    }
+  }
+}

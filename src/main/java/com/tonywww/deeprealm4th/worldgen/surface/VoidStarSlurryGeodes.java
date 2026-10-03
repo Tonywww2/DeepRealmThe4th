@@ -14,10 +14,11 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.AmethystClusterBlock;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
-/** Places a configured vanilla geode in isolated void chunks, then adds its harvestable seeps. */
+/** Places a vanilla geode in isolated void chunks, with 2–4 renewable star sources on its inner wall. */
 public final class VoidStarSlurryGeodes {
     private static final long SALT = 0x52A1C4E0D3L;
     // Keep in sync with the configured geode's +/- generation offsets.
@@ -57,7 +58,7 @@ public final class VoidStarSlurryGeodes {
                 for (int dz = -EXTENT; dz <= EXTENT; dz++) {
                     BlockPos pos = origin.offset(dx, dy, dz);
                     var state = level.getBlockState(pos);
-                    if (!state.is(Blocks.AMETHYST_BLOCK) && !state.is(Blocks.BUDDING_AMETHYST)) continue;
+                    if (!state.is(Blocks.AMETHYST_BLOCK)) continue;
                     int distance = dx * dx + dy * dy + dz * dz;
                     for (Direction direction : Direction.values()) {
                         BlockPos neighbor = pos.relative(direction);
@@ -72,8 +73,21 @@ public final class VoidStarSlurryGeodes {
         innerWall.sort(Comparator.comparingLong(pos ->
                 SeededNoise.hash(seed ^ pos.getY(), pos.getX(), pos.getZ())));
         int count = Math.min(innerWall.size(), 2 + (int) Math.floorMod(SeededNoise.hash(seed, 5, 0), 3));
+        var stages = List.of(AstralBlockRegistration.SMALL_STAR_SLURRY_BUD.get(),
+                AstralBlockRegistration.MEDIUM_STAR_SLURRY_BUD.get(),
+                AstralBlockRegistration.LARGE_STAR_SLURRY_BUD.get(),
+                AstralBlockRegistration.STAR_SLURRY_CLUSTER.get());
         for (int i = 0; i < count; i++) {
-            level.setBlock(innerWall.get(i), AstralBlockRegistration.STAR_SLURRY_SEEP.get().defaultBlockState(), 2);
+            BlockPos source = innerWall.get(i);
+            level.setBlock(source, AstralBlockRegistration.STAR_SOURCE.get().defaultBlockState(), 2);
+            for (Direction direction : Direction.values()) {
+                BlockPos crystal = source.relative(direction);
+                if (crystal.distSqr(origin) >= source.distSqr(origin) || !level.getBlockState(crystal).isAir()) continue;
+                int stage = (int) Math.floorMod(SeededNoise.hash(seed, i, 6), stages.size());
+                level.setBlock(crystal, stages.get(stage).defaultBlockState()
+                        .setValue(AmethystClusterBlock.FACING, direction), 2);
+                break;
+            }
         }
     }
 }
