@@ -1,6 +1,8 @@
 package com.tonywww.deeprealm4th.astral;
 
 import com.tonywww.deeprealm4th.astral.score.ScoreSheet;
+import com.tonywww.deeprealm4th.astral.score.BigScoreSheet;
+import com.tonywww.deeprealm4th.astral.node.FillerNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +18,10 @@ public final class FillerDefinition {
     private final List<MedalRule> medalRules;
     private final FillerActivation activation;
     private final Set<String> suppressedBy;
+    private final NodeResolver nodeResolver;
+    private final List<BigMedalRule> bigMedalRules;
+    private final String effectGroup;
+    private final EffectScope effectScope;
 
     private FillerDefinition(Builder builder) {
         this.baseScores = ScoreSheet.of(builder.baseScores);
@@ -24,6 +30,10 @@ public final class FillerDefinition {
         this.medalRules = List.copyOf(builder.medalRules);
         this.activation = builder.activation;
         this.suppressedBy = Set.copyOf(builder.suppressedBy);
+        this.nodeResolver = builder.nodeResolver;
+        this.bigMedalRules = List.copyOf(builder.bigMedalRules);
+        this.effectGroup = builder.effectGroup;
+        this.effectScope = builder.effectScope;
     }
 
     public static Builder builder() {
@@ -53,6 +63,21 @@ public final class FillerDefinition {
     /** If any of these IDs is in an open cell, this filler is stored but inactive. */
     public Set<String> suppressedBy() {
         return suppressedBy;
+    }
+
+    public NodeResolver nodeResolver() { return nodeResolver; }
+    public List<BigMedalRule> bigMedalRules() { return bigMedalRules; }
+    public String effectGroup() { return effectGroup; }
+    public EffectScope effectScope() { return effectScope; }
+
+    @FunctionalInterface
+    public interface NodeResolver {
+        FillerNode resolve(FillerContext instanceContext);
+    }
+
+    @FunctionalInterface
+    public interface BigMedalRule {
+        void apply(FillerContext context, BigScoreSheet finalScores, AttributeWriter output);
     }
 
     @FunctionalInterface
@@ -93,6 +118,10 @@ public final class FillerDefinition {
         private final List<MedalRule> medalRules = new ArrayList<>();
         private FillerActivation activation = FillerActivation.STACKABLE;
         private final Set<String> suppressedBy = new java.util.LinkedHashSet<>();
+        private NodeResolver nodeResolver;
+        private final List<BigMedalRule> bigMedalRules = new ArrayList<>();
+        private String effectGroup = "";
+        private EffectScope effectScope = EffectScope.CONTAINER;
 
         private Builder() {}
 
@@ -115,6 +144,24 @@ public final class FillerDefinition {
 
         public Builder medal(MedalRule rule) {
             medalRules.add(Objects.requireNonNull(rule, "rule"));
+            return this;
+        }
+
+        public Builder node(NodeResolver resolver) {
+            nodeResolver = Objects.requireNonNull(resolver, "resolver");
+            return this;
+        }
+
+        public Builder bigMedal(BigMedalRule rule) {
+            bigMedalRules.add(Objects.requireNonNull(rule, "rule"));
+            return this;
+        }
+
+        public Builder effectGroup(String groupKey, EffectScope scope) {
+            if (groupKey == null || !groupKey.matches("[a-z0-9_.-]+:[a-z0-9_/.-]+"))
+                throw new IllegalArgumentException("Expected a namespaced effect group: " + groupKey);
+            effectGroup = groupKey;
+            effectScope = Objects.requireNonNull(scope, "scope");
             return this;
         }
 

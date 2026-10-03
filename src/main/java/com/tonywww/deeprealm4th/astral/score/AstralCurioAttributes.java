@@ -2,7 +2,9 @@ package com.tonywww.deeprealm4th.astral.score;
 
 import com.tonywww.deeprealm4th.DeepRealmTheForth;
 import com.tonywww.deeprealm4th.astral.ScoreType;
+import com.tonywww.deeprealm4th.astral.AstralRuntime;
 import com.tonywww.deeprealm4th.astral.container.ContainerLayout;
+import com.tonywww.deeprealm4th.astral.node.FillerResultSummary;
 import com.tonywww.deeprealm4th.item.AstralContainerItem;
 import com.tonywww.deeprealm4th.platform.curios.CurioAttributePlatform;
 import com.tonywww.deeprealm4th.platform.data.AstralStoredItems;
@@ -10,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.UUID;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -28,18 +31,22 @@ public final class AstralCurioAttributes {
         if (!(slot.entity() instanceof Player player) || player.level().isClientSide
                 || !(body.getItem() instanceof AstralContainerItem item)) return;
         ContainerLayout layout = item.layout(body);
-        AstralScoreEngine.Result result = AstralScoreEngine.calculate(player, body, layout,
-                AstralStoredItems.read(body, layout.size()));
+        AstralScoreEngine.Result result = AstralScoreEngine.calculateEquipped(player, body, layout,
+                AstralStoredItems.read(body, layout.size()), slot.identifier(), slot.index());
         Map<AstralAttributeKey, Double> active = new HashMap<>();
         result.attributeBonuses().forEach((key, amount) -> {
             if (Double.isFinite(amount) && amount != 0) active.put(key, amount);
         });
-        if (!active.equals(readSnapshot(body)) || !result.scores().equals(scoreSnapshot(body))) {
-            writeSnapshot(body, active, result.scores());
+        Map<Integer, FillerResultSummary> summaries = new LinkedHashMap<>();
+        result.nodeResults().forEach((cell, value) -> summaries.put(cell, FillerResultSummary.from(value)));
+        if (!active.equals(readSnapshot(body)) || !result.scores().equals(scoreSnapshot(body))
+                || !summaries.equals(nodeSnapshot(body))) {
+            writeSnapshot(body, active, result.scores(), summaries);
         }
     }
 
     public static Map<AstralAttributeKey, Double> bonuses(SlotContext slot, ItemStack body) {
+        if (AstralRuntime.calculating()) return readSnapshot(body);
         if (slot.entity() instanceof Player player && player.level().isClientSide
                 && body.getItem() instanceof AstralContainerItem item) {
             if (scoreSnapshot(body) != null) return readSnapshot(body);
@@ -91,12 +98,28 @@ public final class AstralCurioAttributes {
         return readSnapshot(body);
     }
 
+    public static Map<Integer, FillerResultSummary> nodeSnapshot(ItemStack body) {
+        CompoundTag root = CurioAttributePlatform.readSnapshotTag(body, SNAPSHOT_KEY);
+        if (root == null) return Map.of();
+        Map<Integer, FillerResultSummary> summaries = new LinkedHashMap<>();
+        ListTag cells = root.getList("NodeResults", Tag.TAG_COMPOUND);
+        for (int i = 0; i < cells.size(); i++) {
+            try {
+                FillerResultSummary summary = FillerResultSummary.decode(cells.getCompound(i));
+                summaries.put(summary.cell(), summary);
+            } catch (RuntimeException ignored) {
+                // A malformed or older summary must never break Curios attribute updates.
+            }
+        }
+        return Map.copyOf(summaries);
+    }
+
     public static void clearSnapshot(ItemStack body) {
         CurioAttributePlatform.clearSnapshotTag(body, SNAPSHOT_KEY);
     }
 
     private static void writeSnapshot(ItemStack body, Map<AstralAttributeKey, Double> values,
-            ScoreSheet scores) {
+            ScoreSheet scores, Map<Integer, FillerResultSummary> summaries) {
         CompoundTag root = new CompoundTag();
         ListTag entries = new ListTag();
         values.entrySet().stream().sorted((left, right) ->
@@ -112,6 +135,10 @@ public final class AstralCurioAttributes {
         CompoundTag scoreValues = new CompoundTag();
         for (ScoreType type : ScoreType.values()) scoreValues.putDouble(type.id(), scores.get(type));
         root.put("Scores", scoreValues);
+        ListTag nodes = new ListTag();
+        summaries.entrySet().stream().sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> nodes.add(entry.getValue().encode()));
+        root.put("NodeResults", nodes);
         CurioAttributePlatform.writeSnapshotTag(body, SNAPSHOT_KEY, root);
     }
 }

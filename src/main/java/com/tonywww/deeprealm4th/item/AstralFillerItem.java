@@ -2,6 +2,7 @@ package com.tonywww.deeprealm4th.item;
 
 import com.tonywww.deeprealm4th.astral.score.AstralScoreColors;
 import com.tonywww.deeprealm4th.astral.tooltip.AstralTooltips;
+import com.tonywww.deeprealm4th.astral.tooltip.FillerPresentations;
 import com.tonywww.deeprealm4th.platform.item.VersionedTooltipItem;
 
 import java.util.List;
@@ -30,7 +31,15 @@ public class AstralFillerItem extends VersionedTooltipItem {
     }
 
     @Override
+    public Component getName(ItemStack stack) {
+        Component dynamic = FillerPresentations.name(stack);
+        return dynamic == null ? super.getName(stack) : dynamic;
+    }
+
+    @Override
     protected void appendAstralTooltip(ItemStack stack, List<Component> tooltip) {
         AstralTooltips.appendFillerComponents(stack, tooltip, descriptionLines);
+        tooltip.addAll(FillerPresentations.summary(stack));
+        tooltip.addAll(FillerPresentations.tooltip(stack, null));
     }
 }

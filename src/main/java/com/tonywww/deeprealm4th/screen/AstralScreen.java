@@ -3,6 +3,12 @@ package com.tonywww.deeprealm4th.screen;
 import com.tonywww.deeprealm4th.astral.ScoreType;
 import com.tonywww.deeprealm4th.astral.container.ContainerLayout;
 import com.tonywww.deeprealm4th.astral.score.AstralMedalFormulas;
+import com.tonywww.deeprealm4th.astral.AstralFillers;
+import com.tonywww.deeprealm4th.astral.node.FillerResultSummary;
+import com.tonywww.deeprealm4th.astral.score.AstralCurioAttributes;
+import com.tonywww.deeprealm4th.astral.score.AstralNumber;
+import com.tonywww.deeprealm4th.astral.score.AstralScoreEngine;
+import com.tonywww.deeprealm4th.astral.tooltip.FillerPresentations;
 import com.tonywww.deeprealm4th.astral.score.AstralScoreColors;
 import com.tonywww.deeprealm4th.astral.score.WarriorMedalFormula;
 import com.tonywww.deeprealm4th.astral.tooltip.AstralTooltips;
@@ -105,15 +111,22 @@ public final class AstralScreen extends VersionedMenuScreen<AstralMenu> {
                     : switch (menu.inactiveReason(cell)) {
                         case 1 -> "suppressed_cell";
                         case 2 -> "duplicate_cell";
+                        case 3 -> "invalid_cell";
+                        case 4 -> "effect_group_cell";
+                        case 5 -> "disabled_cell";
                         default -> null;
                     };
         }
+        boolean dynamicNode = hoveredMenuIndex >= 0 && hoveredMenuIndex < menu.layout().size()
+                && hoveredSlot != null && hoveredSlot.hasItem()
+                && AstralFillers.find(hoveredSlot.getItem()) != null
+                && AstralFillers.find(hoveredSlot.getItem()).nodeResolver() != null;
         boolean medalPreview = key == null && hoveredMenuIndex >= 0
                 && hoveredMenuIndex < menu.layout().size() && hoveredSlot != null
                 && (hoveredSlot.getItem().is(AstralItemCatalog.WARRIOR_MEDAL.get())
                     || hoveredSlot.getItem().is(AstralItemCatalog.WAYFARER_MEDAL.get())
                     || hoveredSlot.getItem().is(AstralItemCatalog.WARDEN_MEDAL.get()));
-        if ((key != null || medalPreview) && hoveredSlot != null && hoveredSlot.hasItem()) {
+        if ((key != null || medalPreview || dynamicNode) && hoveredSlot != null && hoveredSlot.hasItem()) {
             // Keep the item's own tooltip visible and add the cell state as its last line.
             var lines = new ArrayList<>(getTooltipFromContainerItem(hoveredSlot.getItem()));
             if (key != null) {
@@ -133,6 +146,29 @@ public final class AstralScreen extends VersionedMenuScreen<AstralMenu> {
                     double health = AstralMedalFormulas.maxHealthBonus(menu.score(ScoreType.CONSTITUTION));
                     lines.add(Component.translatable("tooltip.deeprealm_4th.warden_medal.preview",
                             AstralTooltips.number(health)).withStyle(ChatFormatting.GOLD));
+                }
+            }
+            if (dynamicNode) {
+                FillerResultSummary summary = AstralCurioAttributes.nodeSnapshot(menu.owner())
+                        .get(hoveredMenuIndex);
+                if (summary == null && minecraft != null && minecraft.player != null) {
+                    try {
+                        var contents = new ArrayList<net.minecraft.world.item.ItemStack>();
+                        for (int cell = 0; cell < menu.layout().size(); cell++)
+                            contents.add(menu.slots.get(cell).getItem());
+                        var result = AstralScoreEngine.calculate(minecraft.player, menu.owner(),
+                                menu.layout(), contents).nodeResults().get(hoveredMenuIndex);
+                        if (result != null) summary = FillerResultSummary.from(result);
+                    } catch (RuntimeException ignored) {
+                        // Server-authoritative summary may be unavailable for an unequipped preview.
+                    }
+                }
+                if (summary != null) {
+                    lines.add(Component.translatable("tooltip.deeprealm_4th.node.totals",
+                            summary.baseTotal().format(AstralNumber.Format.COMPACT),
+                            summary.finalTotal().format(AstralNumber.Format.COMPACT))
+                            .withStyle(ChatFormatting.GRAY));
+                    lines.addAll(FillerPresentations.tooltip(hoveredSlot.getItem(), summary));
                 }
             }
             graphics.renderTooltip(font, lines, Optional.empty(), scaledX, scaledY);

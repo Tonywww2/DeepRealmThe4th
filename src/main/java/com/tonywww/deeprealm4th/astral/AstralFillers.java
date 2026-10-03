@@ -14,6 +14,7 @@ import net.minecraft.world.item.ItemStack;
 /** Public registration point for Java addons and KubeJS bindings. */
 public final class AstralFillers {
     private static final Map<String, FillerDefinition> DEFINITIONS = new ConcurrentHashMap<>();
+    private static final java.util.Set<String> DISABLED = ConcurrentHashMap.newKeySet();
 
     static {
         register("deeprealm_4th:strength_gem", FillerDefinition.builder()
@@ -141,12 +142,20 @@ public final class AstralFillers {
 
     public static FillerDefinition find(ItemStack stack) {
         if (stack.isEmpty()) return null;
-        return DEFINITIONS.get(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        return find(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
     }
 
     public static FillerDefinition find(String itemId) {
-        return DEFINITIONS.get(itemId);
+        return DISABLED.contains(itemId) ? null : DEFINITIONS.get(itemId);
     }
+
+    /** Startup configuration hook; disabled fillers remain stored but grant no effect. */
+    public static void disable(String itemId) {
+        validateId(itemId);
+        DISABLED.add(itemId);
+    }
+
+    public static boolean isDisabled(String itemId) { return DISABLED.contains(itemId); }
 
     private static void validateId(String itemId) {
         if (itemId == null || !itemId.matches("[a-z0-9_.-]+:[a-z0-9_/.-]+")) {

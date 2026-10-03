@@ -1,0 +1,17 @@
+{
+  "type": "deeprealm_4th:combination_forging",
+  "result": {"item": "kubejs:shared_astral_gem"},
+  "ingredients": [
+    {
+      "stack": {"item": "minecraft:amethyst_shard"},
+      "name": "gem",
+      "data_predicate": "kubejs:demo_gem",
+      "exact_data": false
+    },
+    {"stack": {"item": "minecraft:paper"}, "name": "binding"}
+  ],
+  "clicks": 3,
+  "cooldown": 10,
+  "levels": 0,
+  "data_transform": "kubejs:gem_to_filler"
+}

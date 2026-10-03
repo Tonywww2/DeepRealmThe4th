@@ -9,6 +9,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 
 /** Native-resolution texture background with a separate hammer button atlas. */
 public final class ForgingPadScreen extends VersionedMenuScreen<ForgingPadMenu> {
@@ -35,13 +36,15 @@ public final class ForgingPadScreen extends VersionedMenuScreen<ForgingPadMenu> 
 
         CombinationForgingRecipe recipe = menu.matchingRecipe();
         if (recipe == null) return;
-        Component name = recipe.nameKey().isEmpty() ? recipe.output().getHoverName()
+        ItemStack output = menu.previewOutput();
+        if (output.isEmpty()) return;
+        Component name = recipe.nameKey().isEmpty() ? output.getHoverName()
                 : Component.translatable(recipe.nameKey());
         String display = font.plainSubstrByWidth(name.getString(), 75);
         if (display.length() < name.getString().length())
             display = font.plainSubstrByWidth(name.getString(), 75 - font.width("...")) + "...";
         graphics.drawString(font, display, x + 165, y + 25, 0xFF272027, false);
-        graphics.renderItem(recipe.output(), x + RESULT_SLOT_X + 1, y + RESULT_SLOT_Y + 1);
+        graphics.renderItem(output, x + RESULT_SLOT_X + 1, y + RESULT_SLOT_Y + 1);
         boolean hovered = mouseX >= x + BUTTON_X && mouseX < x + BUTTON_X + 25
                 && mouseY >= y + BUTTON_Y && mouseY < y + BUTTON_Y + 25;
         graphics.blit(HAMMER_BUTTON, x + BUTTON_X, y + BUTTON_Y,
@@ -58,13 +61,13 @@ public final class ForgingPadScreen extends VersionedMenuScreen<ForgingPadMenu> 
         renderTooltip(graphics, mouseX, mouseY);
         if (mouseX >= leftPos + RESULT_SLOT_X && mouseX < leftPos + RESULT_SLOT_X + 18
                 && mouseY >= topPos + RESULT_SLOT_Y && mouseY < topPos + RESULT_SLOT_Y + 18) {
-            CombinationForgingRecipe recipe = menu.matchingRecipe();
-            if (recipe != null) graphics.renderTooltip(font, recipe.output(), mouseX, mouseY);
+            ItemStack output = menu.previewOutput();
+            if (!output.isEmpty()) graphics.renderTooltip(font, output, mouseX, mouseY);
         }
     }
 
     @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && menu.matchingRecipe() != null
+        if (button == 0 && !menu.previewOutput().isEmpty()
                 && mouseX >= leftPos + BUTTON_X && mouseX < leftPos + BUTTON_X + 25
                 && mouseY >= topPos + BUTTON_Y && mouseY < topPos + BUTTON_Y + 25) {
             if (Minecraft.getInstance().gameMode != null)

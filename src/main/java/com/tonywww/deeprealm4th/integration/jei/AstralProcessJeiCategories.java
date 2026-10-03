@@ -88,7 +88,7 @@ public final class AstralProcessJeiCategories {
                 boolean materialOnFrame = recipe.steps().get(i).direction()
                         == ProjectionRecipe.Direction.MATERIAL_ON_FRAME;
                 builder.addInputSlot(materialOnFrame ? 27 : 108, 4 + i * 19)
-                        .addItemStack(recipe.steps().get(i).stack());
+                        .addItemStack(recipe.steps().get(i).displayStack());
             }
             builder.addOutputSlot(141, 181).addItemStack(recipe.output());
         }

@@ -29,7 +29,7 @@ public final class ProjectionInventoryClick {
                 : ProjectionRecipe.Direction.FRAME_ON_MATERIAL;
         ItemStack frame = frameOnTarget ? target : carried;
         ItemStack material = frameOnTarget ? carried : target;
-        ProjectionCombining.Result result = ProjectionCombining.apply(player.level(), frame, material, direction);
+        ProjectionCombining.Result result = ProjectionCombining.apply(player, frame, material, direction);
         if (!result.accepted()) return true;
         if (frameOnTarget) {
             slot.set(result.frameOrOutput());
@@ -43,6 +43,11 @@ public final class ProjectionInventoryClick {
             menu.setCarried(result.frameOrOutput());
         }
         slot.setChanged();
+        for (ItemStack returned : result.returned()) {
+            if (returned.isEmpty()) continue;
+            player.getInventory().add(returned);
+            if (!returned.isEmpty()) player.drop(returned, false);
+        }
         menu.broadcastChanges();
         return true;
     }

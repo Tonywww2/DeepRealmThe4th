@@ -120,6 +120,8 @@ public final class AstralMenu extends AbstractContainerMenu {
         return cells.layout();
     }
 
+    public ItemStack owner() { return cells.owner(); }
+
     public double score(ScoreType type) {
         long bits = 0;
         for (int i = 0; i < 4; i++) {

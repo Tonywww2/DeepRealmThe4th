@@ -6,6 +6,8 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.tonywww.deeprealm4th.astral.process.ProcessItemIds;
+import com.tonywww.deeprealm4th.astral.process.AstralDataPredicates;
+import com.tonywww.deeprealm4th.astral.process.AstralTransforms;
 import com.tonywww.deeprealm4th.platform.registry.AstralProcessRegistration;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +17,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -42,23 +45,35 @@ public final class CombinationForgingRecipe implements Recipe<
         *///?}
         > {
     /** A required stack, or an explicit tag alternative with a required count. */
-    public record Input(ItemStack stack, String tag, int tagCount) {
+    public record Input(ItemStack stack, String tag, int tagCount,
+            String name, String predicate, boolean exactData) {
         //? if !forge {
         /*public static final Codec<Input> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 ItemStack.STRICT_CODEC.optionalFieldOf("stack", ItemStack.EMPTY).forGetter(Input::stack),
                 Codec.STRING.optionalFieldOf("tag", "").forGetter(Input::tag),
-                Codec.INT.optionalFieldOf("count", 1).forGetter(Input::tagCount)
+                Codec.INT.optionalFieldOf("count", 1).forGetter(Input::tagCount),
+                Codec.STRING.optionalFieldOf("name", "").forGetter(Input::name),
+                Codec.STRING.optionalFieldOf("data_predicate", "").forGetter(Input::predicate),
+                Codec.BOOL.optionalFieldOf("exact_data", true).forGetter(Input::exactData)
         ).apply(instance, Input::new));
         *///?}
 
+        public Input(ItemStack stack, String tag, int tagCount) {
+            this(stack, tag, tagCount, "", "", true);
+        }
+
         public Input {
-            if (stack == null || tag == null) throw new IllegalArgumentException("Missing forging input");
+            if (stack == null || tag == null || name == null || predicate == null)
+                throw new IllegalArgumentException("Missing forging input");
             stack = stack.copy();
             if (stack.isEmpty() == tag.isEmpty())
                 throw new IllegalArgumentException("Exactly one of stack or tag is required");
             if (!tag.isEmpty()) ProcessItemIds.requireValid(tag);
             if (tagCount < 1 || tagCount > 64 || !stack.isEmpty() && tagCount != 1)
                 throw new IllegalArgumentException("Invalid forging input count");
+            if (!predicate.isEmpty()) ProcessItemIds.requireValid(predicate);
+            if (!exactData && predicate.isEmpty())
+                throw new IllegalArgumentException("A non-exact stack input requires a data_predicate");
         }
 
         @Override public ItemStack stack() { return stack.copy(); }
@@ -66,8 +81,11 @@ public final class CombinationForgingRecipe implements Recipe<
 
         public boolean accepts(ItemStack candidate) {
             if (candidate.isEmpty() || candidate.getCount() < count()) return false;
-            return tag.isEmpty() ? ItemStack.matches(stack.copyWithCount(1), candidate.copyWithCount(1))
+            boolean itemMatches = tag.isEmpty() ? candidate.is(stack.getItem())
                     : candidate.is(TagKey.create(Registries.ITEM, ResourceLocation.tryParse(tag)));
+            return itemMatches && (!exactData || tag.isEmpty() && ItemStack.matches(
+                    stack.copyWithCount(1), candidate.copyWithCount(1)) || !tag.isEmpty())
+                    && (predicate.isEmpty() || AstralDataPredicates.test(predicate, candidate));
         }
 
         public ItemStack displayStack() {
@@ -85,6 +103,7 @@ public final class CombinationForgingRecipe implements Recipe<
     private final int cooldown;
     private final int levels;
     private final String nameKey;
+    private final String dataTransform;
     //? if forge {
     private final ResourceLocation id;
     //?} else {
@@ -94,13 +113,18 @@ public final class CombinationForgingRecipe implements Recipe<
             Codec.INT.optionalFieldOf("clicks", 3).forGetter(CombinationForgingRecipe::clicks),
             Codec.INT.optionalFieldOf("cooldown", 10).forGetter(CombinationForgingRecipe::cooldown),
             Codec.INT.optionalFieldOf("levels", 0).forGetter(CombinationForgingRecipe::levels),
-            Codec.STRING.optionalFieldOf("name_key", "").forGetter(CombinationForgingRecipe::nameKey)
+            Codec.STRING.optionalFieldOf("name_key", "").forGetter(CombinationForgingRecipe::nameKey),
+            Codec.STRING.optionalFieldOf("data_transform", "").forGetter(CombinationForgingRecipe::dataTransform)
     ).apply(instance, CombinationForgingRecipe::new));
     *///?}
 
     //? if forge {
     public CombinationForgingRecipe(ResourceLocation id, ItemStack result, List<Input> inputs,
                                     int clicks, int cooldown, int levels, String nameKey) {
+        this(id, result, inputs, clicks, cooldown, levels, nameKey, "");
+    }
+    public CombinationForgingRecipe(ResourceLocation id, ItemStack result, List<Input> inputs,
+                                    int clicks, int cooldown, int levels, String nameKey, String dataTransform) {
         this.id = id;
         this.result = result.copy();
         this.inputs = List.copyOf(inputs);
@@ -108,17 +132,23 @@ public final class CombinationForgingRecipe implements Recipe<
         this.cooldown = cooldown;
         this.levels = levels;
         this.nameKey = nameKey == null ? "" : nameKey;
+        this.dataTransform = dataTransform == null ? "" : dataTransform;
         validate();
     }
     //?} else {
     /*public CombinationForgingRecipe(ItemStack result, List<Input> inputs,
                                     int clicks, int cooldown, int levels, String nameKey) {
+        this(result, inputs, clicks, cooldown, levels, nameKey, "");
+    }
+    public CombinationForgingRecipe(ItemStack result, List<Input> inputs,
+                                    int clicks, int cooldown, int levels, String nameKey, String dataTransform) {
         this.result = result.copy();
         this.inputs = List.copyOf(inputs);
         this.clicks = clicks;
         this.cooldown = cooldown;
         this.levels = levels;
         this.nameKey = nameKey == null ? "" : nameKey;
+        this.dataTransform = dataTransform == null ? "" : dataTransform;
         validate();
     }
     *///?}
@@ -130,6 +160,7 @@ public final class CombinationForgingRecipe implements Recipe<
         if (clicks < 1 || clicks > 64) throw new IllegalArgumentException("Clicks must be 1..64");
         if (cooldown < 0 || cooldown > 1200) throw new IllegalArgumentException("Invalid click cooldown");
         if (levels < 0 || levels > 10000) throw new IllegalArgumentException("Invalid level cost");
+        if (!dataTransform.isEmpty()) ProcessItemIds.requireValid(dataTransform);
     }
 
     public List<Input> inputs() { return inputs; }
@@ -137,7 +168,66 @@ public final class CombinationForgingRecipe implements Recipe<
     public int cooldown() { return cooldown; }
     public int levels() { return levels; }
     public String nameKey() { return nameKey; }
+    public String dataTransform() { return dataTransform; }
     public ItemStack output() { return result.copy(); }
+
+    public AstralTransforms.ProcessContext processContext(Player player, Container inventory,
+            String recipeId, String stage) {
+        int[] matched = assignment(inventory);
+        if (matched == null) throw new IllegalArgumentException("Forging ingredients no longer match");
+        java.util.Map<String, ItemStack> sources = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < inputs.size(); i++) {
+            String name = inputs.get(i).name().isEmpty() ? "input_" + i : inputs.get(i).name();
+            if (sources.putIfAbsent(name, inventory.getItem(matched[i]).copy()) != null)
+                throw new IllegalArgumentException("Duplicate forging input name: " + name);
+        }
+        return new AstralTransforms.ProcessContext(player, player.level(), recipeId, stage,
+                sources, List.of(), output());
+    }
+
+    public AstralTransforms.Result<ItemStack> preview(Player player, Container inventory) {
+        return preview(player, inventory,
+                //? if forge {
+                id.toString()
+                //?} else {
+                /*"deeprealm_4th:combination_forging"
+                *///?}
+        );
+    }
+
+    public AstralTransforms.Result<ItemStack> preview(Player player, Container inventory, String recipeId) {
+        if (assignment(inventory) == null) return AstralTransforms.Result.failure("ingredients_changed");
+        if (dataTransform.isEmpty()) return AstralTransforms.Result.success(output());
+        try {
+            return AstralTransforms.preview(dataTransform, processContext(player, inventory,
+                    recipeId, "preview"));
+        } catch (RuntimeException exception) {
+            return AstralTransforms.Result.failure("invalid_forging_context:" + exception.getMessage());
+        }
+    }
+
+    public AstralTransforms.Result<AstralTransforms.ProcessOutput> produce(Player player, Container inventory) {
+        return produce(player, inventory,
+                //? if forge {
+                id.toString()
+                //?} else {
+                /*"deeprealm_4th:combination_forging"
+                *///?}
+        );
+    }
+
+    public AstralTransforms.Result<AstralTransforms.ProcessOutput> produce(Player player,
+            Container inventory, String recipeId) {
+        if (assignment(inventory) == null) return AstralTransforms.Result.failure("ingredients_changed");
+        if (dataTransform.isEmpty())
+            return AstralTransforms.Result.success(AstralTransforms.ProcessOutput.of(output()));
+        try {
+            return AstralTransforms.produce(dataTransform, processContext(player, inventory,
+                    recipeId, "produce"));
+        } catch (RuntimeException exception) {
+            return AstralTransforms.Result.failure("invalid_forging_context:" + exception.getMessage());
+        }
+    }
 
     /** Returns the slot index for each ingredient, or null when any stack or count differs. */
     public int[] assignment(Container inventory) {
@@ -197,20 +287,24 @@ public final class CombinationForgingRecipe implements Recipe<
                 JsonObject entry = value.getAsJsonObject();
                 inputs.add(new Input(entry.has("stack") ? CraftingHelper.getItemStack(GsonHelper.getAsJsonObject(entry, "stack"), true, true)
                                 : ItemStack.EMPTY,
-                        GsonHelper.getAsString(entry, "tag", ""), GsonHelper.getAsInt(entry, "count", 1)));
+                        GsonHelper.getAsString(entry, "tag", ""), GsonHelper.getAsInt(entry, "count", 1),
+                        GsonHelper.getAsString(entry, "name", ""), GsonHelper.getAsString(entry, "data_predicate", ""),
+                        GsonHelper.getAsBoolean(entry, "exact_data", true)));
             }
             return new CombinationForgingRecipe(id, CraftingHelper.getItemStack(GsonHelper.getAsJsonObject(json, "result"), true, true),
                     inputs, GsonHelper.getAsInt(json, "clicks", 3), GsonHelper.getAsInt(json, "cooldown", 10),
-                    GsonHelper.getAsInt(json, "levels", 0), GsonHelper.getAsString(json, "name_key", ""));
+                    GsonHelper.getAsInt(json, "levels", 0), GsonHelper.getAsString(json, "name_key", ""),
+                    GsonHelper.getAsString(json, "data_transform", ""));
         }
         @Override public CombinationForgingRecipe fromNetwork(ResourceLocation id, FriendlyByteBuf buffer) {
             ItemStack result = buffer.readItem();
             int size = buffer.readVarInt();
             if (size < 1 || size > 12) throw new IllegalArgumentException("Invalid forging input count");
             List<Input> inputs = new ArrayList<>();
-            for (int i = 0; i < size; i++) inputs.add(new Input(buffer.readItem(), buffer.readUtf(), buffer.readVarInt()));
+            for (int i = 0; i < size; i++) inputs.add(new Input(buffer.readItem(), buffer.readUtf(), buffer.readVarInt(),
+                    buffer.readUtf(), buffer.readUtf(), buffer.readBoolean()));
             return new CombinationForgingRecipe(id, result, inputs,
-                    buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readUtf());
+                    buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readUtf(), buffer.readUtf());
         }
         @Override public void toNetwork(FriendlyByteBuf buffer, CombinationForgingRecipe recipe) {
             buffer.writeItem(recipe.result);
@@ -219,11 +313,15 @@ public final class CombinationForgingRecipe implements Recipe<
                 buffer.writeItem(input.stack());
                 buffer.writeUtf(input.tag());
                 buffer.writeVarInt(input.tagCount());
+                buffer.writeUtf(input.name());
+                buffer.writeUtf(input.predicate());
+                buffer.writeBoolean(input.exactData());
             }
             buffer.writeVarInt(recipe.clicks);
             buffer.writeVarInt(recipe.cooldown);
             buffer.writeVarInt(recipe.levels);
             buffer.writeUtf(recipe.nameKey);
+            buffer.writeUtf(recipe.dataTransform);
         }
         //?} else {
         /*@Override public MapCodec<CombinationForgingRecipe> codec() { return CODEC; }
