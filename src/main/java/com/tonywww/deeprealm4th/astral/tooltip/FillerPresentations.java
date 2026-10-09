@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -14,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 /** Stack-data-aware name and tooltip providers for a shared physical filler item. */
 public final class FillerPresentations {
     private static final Map<String, Provider> PROVIDERS = new ConcurrentHashMap<>();
+    private static final Map<String, Predicate<ItemStack>> FOIL_PROVIDERS = new ConcurrentHashMap<>();
     private FillerPresentations() {}
 
     public interface Provider {
@@ -35,6 +37,23 @@ public final class FillerPresentations {
         register(itemId, new Provider() {
             @Override public Component name(ItemStack stack) { return name.apply(stack); }
         });
+    }
+
+    /** Adds an enchantment glint based on stack data, without adding an enchantment. */
+    public static void registerFoil(String itemId, Predicate<ItemStack> foil) {
+        if (itemId == null || !itemId.matches("[a-z0-9_.-]+:[a-z0-9_/.-]+"))
+            throw new IllegalArgumentException("Expected a namespaced item ID");
+        if (FOIL_PROVIDERS.putIfAbsent(itemId, Objects.requireNonNull(foil)) != null)
+            throw new IllegalArgumentException("Foil provider already registered for " + itemId);
+    }
+
+    /** Additive: false retains the item's native glint behavior. */
+    public static boolean foil(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        Predicate<ItemStack> foil = FOIL_PROVIDERS.get(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        if (foil == null) return false;
+        try { return foil.test(stack.copy()); }
+        catch (RuntimeException ignored) { return false; }
     }
 
     public static Provider find(ItemStack stack) {

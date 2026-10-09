@@ -123,7 +123,11 @@ public final class ForgingPadMenu extends AbstractContainerMenu {
             ItemStack[] before = new ItemStack[pad.getContainerSize()];
             for (int i = 0; i < before.length; i++) before[i] = pad.getItem(i).copy();
             AstralTransforms.Result<AstralTransforms.ProcessOutput> outcome = recipe.produce(player, pad, entry.id());
-            if (!outcome.ok()) { progress.set(0, 0); return true; }
+            if (!outcome.ok()) {
+                progress.set(0, 0);
+                player.displayClientMessage(net.minecraft.network.chat.Component.literal(outcome.error()), true);
+                return true;
+            }
             produced = outcome.value();
             consume = new int[assignment.length];
             java.util.Set<String> known = new java.util.HashSet<>();

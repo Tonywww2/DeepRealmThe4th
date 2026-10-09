@@ -49,8 +49,8 @@ public final class GemPayload {
         this.primary = normalizePrimary(primary);
         this.natural = Objects.requireNonNull(natural, "natural");
         this.affixes = List.copyOf(Objects.requireNonNull(affixes, "affixes"));
-        if (this.affixes.isEmpty() || this.affixes.size() > 5)
-            throw new IllegalArgumentException("A gem needs 1..5 natural affixes");
+        if (this.affixes.size() > 5)
+            throw new IllegalArgumentException("A gem needs 0..5 natural affixes");
         for (Affix affix : this.affixes) validateNaturalAffix(affix);
         this.reinforcements = List.copyOf(Objects.requireNonNull(reinforcements, "reinforcements"));
         this.extensions = extensions == null ? new CompoundTag() : extensions.copy();
@@ -154,10 +154,17 @@ public final class GemPayload {
             if (!nbt.contains("size", Tag.TAG_ANY_NUMERIC) || !nbt.contains("purity", Tag.TAG_ANY_NUMERIC)
                     || !nbt.contains("polish", Tag.TAG_ANY_NUMERIC)) return DecodeResult.invalid("missing_gem_dimension");
             Natural natural = new Natural(nbt.getDouble("size"), nbt.getDouble("purity"), nbt.getDouble("polish"));
-            List<Affix> affixes = decodeAffixes(data.getList("affixes", Tag.TAG_COMPOUND));
-            if (affixes.isEmpty() || affixes.size() > 5)
+            if (!data.contains("affixes", Tag.TAG_LIST) || !data.contains("reinforcements", Tag.TAG_LIST))
+                return DecodeResult.invalid("missing_gem_field");
+            ListTag naturalAffixes = (ListTag) data.get("affixes");
+            ListTag upgrades = (ListTag) data.get("reinforcements");
+            if (!naturalAffixes.isEmpty() && naturalAffixes.getElementType() != Tag.TAG_COMPOUND
+                    || !upgrades.isEmpty() && upgrades.getElementType() != Tag.TAG_COMPOUND)
                 return DecodeResult.invalid("invalid_gem_affix_count");
-            List<Affix> reinforcements = decodeAffixes(data.getList("reinforcements", Tag.TAG_COMPOUND));
+            List<Affix> affixes = decodeAffixes(naturalAffixes);
+            if (affixes.size() > 5)
+                return DecodeResult.invalid("invalid_gem_affix_count");
+            List<Affix> reinforcements = decodeAffixes(upgrades);
             GemPayload payload = new GemPayload(data.getString("source_item"), data.getString("primary"), natural,
                     affixes, reinforcements, data.getCompound("extensions"));
             if (allowedIdentity != null && !allowedIdentity.test(payload.identity()))

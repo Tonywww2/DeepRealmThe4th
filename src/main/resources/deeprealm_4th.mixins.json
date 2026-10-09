@@ -4,6 +4,6 @@
   "package": "com.tonywww.deeprealm4th.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "deeprealm_4th.refmap.json",
-  "mixins": ["WorldGenRegionMixin", "ChunkWriteMixin", "SectionWriteMixin", "InventoryMenuAstralMixin"],
+  "mixins": ["WorldGenRegionMixin", "ChunkWriteMixin", "SectionWriteMixin", "InventoryMenuAstralMixin", "ItemStackPresentationMixin"],
   "injectors": {"defaultRequire": 1}
 }
