@@ -149,5 +149,6 @@
   "jei.deeprealm_4th.forging.clicks": "锤击 %s 次",
   "jei.deeprealm_4th.forging.cooldown": "间隔 %s 刻",
   "jei.deeprealm_4th.forging.levels": "%s 级",
-  "jei.deeprealm_4th.projection.title": "投影框架组合合成"
+  "jei.deeprealm_4th.projection.title": "投影框架组合合成",
+  "jei.deeprealm_4th.projection.crafting_hint": "工作台：放入框架和一件材料。材料在前等同“框架 → 材料”，框架在前等同“材料 → 框架”。"
 }

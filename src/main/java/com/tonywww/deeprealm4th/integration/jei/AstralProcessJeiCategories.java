@@ -28,8 +28,9 @@ public final class AstralProcessJeiCategories {
 
     private AstralProcessJeiCategories() {}
 
-    private static void arrow(GuiGraphics graphics, int x, int y, boolean right) {
-        graphics.blit(ICONS, x, y, right ? 0 : 25, 0, 25, 16, 64, 16);
+    /** Always points right: the left item is placed onto the right item. */
+    private static void arrow(GuiGraphics graphics, int x, int y) {
+        graphics.blit(ICONS, x, y, 0, 0, 25, 16, 64, 16);
     }
 
     /** Inventory projection steps use right click in either stacking direction. */
@@ -60,7 +61,7 @@ public final class AstralProcessJeiCategories {
                 GuiGraphics graphics, double mouseX, double mouseY) {
             var font = Minecraft.getInstance().font;
             graphics.blit(HAMMER, 89, 31, 0, 0, 16, 16, 16, 16);
-            arrow(graphics, 110, 32, true);
+            arrow(graphics, 110, 32);
             graphics.drawString(font,
                     Component.translatable("jei.deeprealm_4th.forging.clicks", recipe.clicks()),
                     5, 72, TEXT_COLOR, false);
@@ -82,7 +83,7 @@ public final class AstralProcessJeiCategories {
         @Override public Component getTitle() { return Component.translatable("jei.deeprealm_4th.projection.title"); }
         @Override public IDrawable getIcon() { return icon; }
         @Override public int getWidth() { return 176; }
-        @Override public int getHeight() { return 203; }
+        @Override public int getHeight() { return 238; }
         @Override public void setRecipe(IRecipeLayoutBuilder builder, ProjectionRecipe recipe, IFocusGroup focuses) {
             for (int i = 0; i < recipe.steps().size(); i++) {
                 boolean materialOnFrame = recipe.steps().get(i).direction()
@@ -102,11 +103,14 @@ public final class AstralProcessJeiCategories {
                 graphics.drawString(font, Integer.toString(i + 1), 6, y + 4, TEXT_COLOR, false);
                 graphics.renderItem(new ItemStack(AstralItemCatalog.PROJECTION_FRAME.get()),
                         materialOnFrame ? 108 : 27, y);
-                arrow(graphics, 68, y + 2, materialOnFrame);
+                arrow(graphics, 68, y + 2);
                 rightClickMouse(graphics, 76, y + 3);
             }
             graphics.renderItem(new ItemStack(AstralItemCatalog.PROJECTION_FRAME.get()), 27, 181);
-            arrow(graphics, 70, 183, true);
+            arrow(graphics, 70, 183);
+            // Up to four wrapped lines: the grid order is the reverse of the left-to-right arrows above.
+            graphics.drawWordWrap(font, Component.translatable("jei.deeprealm_4th.projection.crafting_hint"),
+                    5, 202, 166, TEXT_COLOR);
         }
     }
 }

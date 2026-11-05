@@ -1,7 +1,10 @@
 import org.gradle.api.tasks.compile.JavaCompile
+import java.io.File
+import java.util.Properties
 
 plugins {
     id("dev.isxander.modstitch.base") version "0.8.5"
+    id("me.modmuss50.mod-publish-plugin") version "2.1.1"
 }
 
 val mcVersion = property("deps.minecraft").toString()
@@ -126,6 +129,41 @@ java {
     withSourcesJar()
     toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
 }
+
+publishMods {
+    // NeoForge runs with Mojmap names, so the normal jar is the release artifact.
+    file = tasks.named<Jar>("jar").flatMap { it.archiveFile }
+    version = artifactVersion
+    displayName = "${property("mod.name")} ${property("mod.version")} - MC $mcVersion (NeoForge)"
+    modLoaders.add("neoforge")
+    type = STABLE
+    dryRun = providers.gradleProperty("publish.dryRun").map(String::toBoolean).orElse(false)
+    changelog = providers.environmentVariable("CHANGELOG").filter { it.isNotBlank() }
+        .orElse(providers.provider { rootProject.file("CHANGELOG.md").takeIf { it.isFile }?.readText(Charsets.UTF_8) })
+        .orElse("Release ${property("mod.version")}. See https://github.com/Tonywww2/DeepRealmThe4th")
+
+    curseforge {
+        projectId = providers.gradleProperty("curseforge.projectId")
+        accessToken = providers.environmentVariable("CURSEFORGE_TOKEN").filter { it.isNotBlank() }
+            .orElse(providers.gradleProperty("curseforge.token").filter { it.isNotBlank() })
+            // Also support ~/.gradle when GRADLE_USER_HOME points to the local cache.
+            .orElse(providers.provider {
+                File(System.getProperty("user.home"), ".gradle/gradle.properties")
+                    .takeIf { it.isFile }?.inputStream()?.use { input ->
+                        Properties().apply { load(input) }.getProperty("curseforge.token")
+                            ?.takeIf { it.isNotBlank() }
+                    }
+            })
+        minecraftVersions.add(mcVersion)
+        javaVersions.add(JavaVersion.toVersion(targetJavaVersion))
+        client = true
+        server = true
+        requires("curios")
+        optional("jei", "kubejs")
+    }
+}
+
+tasks.named("publishCurseforge") { mustRunAfter(":buildAllVersions") }
 
 val verifyTerrain by tasks.registering(JavaExec::class) {
     group = "verification"

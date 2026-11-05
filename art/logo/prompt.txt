@@ -1,0 +1,12 @@
+Tool: built-in image_gen
+Asset: deeprealm_4th-logo-512.png
+Final size: 512x512 PNG
+Post-processing: resize only, Pillow LANCZOS.
+
+Use case: logo-brand.
+Asset type: square Minecraft mod logo for Deep Realm: The Fourth / 深境四层, intended for a CurseForge project icon, final delivery 512×512 PNG.
+Primary request: create one polished, distinctive Minecraft-inspired pixel-art emblem of a spiral realm suspended over a dark cosmic void, with a faceted astral gemstone at its heart.
+Subject and composition: one centered compact emblem, viewed from above with a slight isometric tilt. Exactly four broad winding land ribbons curve inward around a deep dark central void: ochre sandstone and orange terracotta desert; charcoal basalt with small glowing orange lava fissures; green forest and mountain stone; teal-blue ocean and pale coastal stone. Dark gaps clearly separate the four ribbons. A brilliant cyan and deep navy faceted stellar gemstone floats above the center, with a restrained golden star glint. Emphasize the spiral silhouette and gemstone; simplify terrain into a few recognizable block shapes.
+Style: crisp hand-crafted Minecraft-style pixel art, stepped pixel contours, blocky faceted shading, limited coherent palette, chunky deliberate pixels, strong readable silhouette at 64×64. This is a graphic emblem, not a gameplay screenshot or a realistic landscape.
+Background: solid very dark navy, generous clean margin around the emblem. Opaque square background.
+Constraints: no words, letters, numbers, typography, border, circular badge frame, watermark, characters, tools, planets, UI, blur or photorealism. Keep detail restrained and contrast strong; avoid a busy starfield. Four ecological land ribbons are world terrain, not four planets.

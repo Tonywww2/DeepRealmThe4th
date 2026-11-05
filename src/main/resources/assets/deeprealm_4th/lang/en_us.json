@@ -149,5 +149,6 @@
   "jei.deeprealm_4th.forging.clicks": "%s strikes",
   "jei.deeprealm_4th.forging.cooldown": "%s tick interval",
   "jei.deeprealm_4th.forging.levels": "%s levels",
-  "jei.deeprealm_4th.projection.title": "Projection Frame Combining"
+  "jei.deeprealm_4th.projection.title": "Projection Frame Combining",
+  "jei.deeprealm_4th.projection.crafting_hint": "Crafting grid: frame + one material. Material first = frame → material; frame first = material → frame."
 }

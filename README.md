@@ -36,6 +36,21 @@ $env:GRADLE_USER_HOME = Join-Path $PWD '.gradle-user-home'
 
 产物位于 `versions/<节点>/build/libs/`。需要完整构建与内置验证时运行 `:1.20.1-forge:build :1.21.1-neoforge:build`；验证范围遵循 [AGENTS.md](AGENTS.md)。
 
+### 构建与 CurseForge 发布脚本
+
+```powershell
+.\scripts\build.ps1      # 只打包 Forge / NeoForge 正式 JAR，不运行验证任务
+.\scripts\dryrun.ps1     # 打包并生成发布预览，不上传，无需 Token
+.\scripts\publish.ps1    # 列出文件，确认后发布两个版本
+.\scripts\publish.ps1 -Yes # 跳过交互确认，供 CI 使用
+```
+
+三个脚本可从任意目录调用，均支持 `-JavaHome '<JDK 路径>'`；Gradle daemon 仍按项目配置使用 Java 25。脚本沿用当前 `GRADLE_USER_HOME`，未设置时使用默认用户目录。
+
+版本号取自 `gradle.properties` 的 `mod.version`，CurseForge 项目为 `1734774`，默认发布为 Release。两个版本都会先完成打包，再依次上传；标记客户端、服务端可用，Curios 必需，JEI / KubeJS 可选。发布配置沿用 [Mod Publish Plugin](https://modmuss50.github.io/mod-publish-plugin/platforms/curseforge/) 的接口。
+
+上传 Token 使用环境变量 `CURSEFORGE_TOKEN`，或在用户级 `~/.gradle/gradle.properties` 中配置 `curseforge.token=...`。使用其他 `GRADLE_USER_HOME` 时，也可放在该目录的 `gradle.properties`；不要把 Token 写入仓库。更新日志依次读取 `CHANGELOG` 环境变量、根目录的 `CHANGELOG.md`，未提供时使用版本号与项目链接。
+
 ```powershell
 .\gradlew.bat :1.20.1-forge:runClient
 .\gradlew.bat :1.21.1-neoforge:runClient

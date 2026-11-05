@@ -150,7 +150,15 @@ public final class ProjectionRecipe implements Recipe<
 
     public AstralTransforms.Result<AstralTransforms.ProcessOutput> produce(Player player, String recipeId,
             List<ProjectionFrameData.Absorbed> absorbed) {
-        AstralTransforms.Result<AstralTransforms.ProcessContext> prepared = processContext(player,
+        return produce(player, player.level(), recipeId, absorbed);
+    }
+
+    /** {@code player} may be null only for recipes without a data transform. */
+    public AstralTransforms.Result<AstralTransforms.ProcessOutput> produce(Player player, Level level,
+            String recipeId, List<ProjectionFrameData.Absorbed> absorbed) {
+        if (player == null && !dataTransform.isEmpty())
+            return AstralTransforms.Result.failure("projection_transform_requires_player");
+        AstralTransforms.Result<AstralTransforms.ProcessContext> prepared = processContext(player, level,
                 recipeId, "produce", absorbed);
         if (!prepared.ok()) return AstralTransforms.Result.failure(prepared.error());
         if (dataTransform.isEmpty())
@@ -167,13 +175,13 @@ public final class ProjectionRecipe implements Recipe<
     public AstralTransforms.Result<ItemStack> preview(Player player, String recipeId,
             List<ProjectionFrameData.Absorbed> absorbed) {
         AstralTransforms.Result<AstralTransforms.ProcessContext> prepared = processContext(player,
-                recipeId, "preview", absorbed);
+                player.level(), recipeId, "preview", absorbed);
         if (!prepared.ok()) return AstralTransforms.Result.failure(prepared.error());
         return dataTransform.isEmpty() ? AstralTransforms.Result.success(output())
                 : AstralTransforms.preview(dataTransform, prepared.value());
     }
 
-    private AstralTransforms.Result<AstralTransforms.ProcessContext> processContext(Player player,
+    private AstralTransforms.Result<AstralTransforms.ProcessContext> processContext(Player player, Level level,
             String recipeId, String stage, List<ProjectionFrameData.Absorbed> absorbed) {
         if (absorbed.size() != steps.size()
                 || !matchesPrefix(ProjectionFrameData.steps(absorbed)))
@@ -185,7 +193,7 @@ public final class ProjectionRecipe implements Recipe<
                 return AstralTransforms.Result.failure("duplicate_projection_step_name");
         }
         return AstralTransforms.Result.success(new AstralTransforms.ProcessContext(player,
-                player.level(), recipeId, stage, sources, List.of(), output()));
+                level, recipeId, stage, sources, List.of(), output()));
     }
 
     @Override public boolean matches(

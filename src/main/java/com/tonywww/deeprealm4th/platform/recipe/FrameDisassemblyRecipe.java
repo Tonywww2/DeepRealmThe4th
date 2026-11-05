@@ -5,6 +5,8 @@ import com.tonywww.deeprealm4th.platform.data.ProjectionFrameData;
 import com.tonywww.deeprealm4th.item.ProjectionFrameItem;
 import com.tonywww.deeprealm4th.astral.content.AstralItemCatalog;
 import com.tonywww.deeprealm4th.platform.registry.AstralProcessRegistration;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
@@ -21,7 +23,10 @@ import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.crafting.CraftingInput;
 *///?}
 
-/** A shapeless, 3x3-only reset that returns every absorbed stack and the empty frame. */
+/**
+ * A shapeless reset that returns the empty frame and every absorbed stack. Absorbed stacks refill the
+ * grid in slot order; NeoForge trims the input to the frame alone, so the rest go to the inventory.
+ */
 public final class FrameDisassemblyRecipe extends CustomRecipe {
     //? if forge {
     public FrameDisassemblyRecipe(ResourceLocation id, CraftingBookCategory category) { super(id, category); }
@@ -37,21 +42,21 @@ public final class FrameDisassemblyRecipe extends CustomRecipe {
             *///?}
             Level level) {
         //? if forge {
-        if (input.getWidth() < 3 || input.getHeight() < 3) return false;
         int size = input.getContainerSize();
         //?} else {
-        /*if (input.width() < 3 || input.height() < 3) return false;
-        int size = input.size();
+        /*int size = input.size();
         *///?}
-        int frames = 0;
+        int frames = 0, absorbed = 0;
         for (int i = 0; i < size; i++) {
             ItemStack stack = input.getItem(i);
             if (stack.isEmpty()) continue;
-            if (!(stack.getItem() instanceof ProjectionFrameItem)
-                    || ProjectionFrameData.read(stack).isEmpty()) return false;
+            if (!(stack.getItem() instanceof ProjectionFrameItem)) return false;
+            absorbed = ProjectionFrameData.read(stack).size();
+            if (absorbed == 0) return false;
             frames++;
         }
-        return frames == 1;
+        // Stacks beyond the grid need a player to receive them.
+        return frames == 1 && (absorbed <= size || CraftingGridContext.player() != null);
     }
 
     @Override public ItemStack assemble(
@@ -75,19 +80,20 @@ public final class FrameDisassemblyRecipe extends CustomRecipe {
         /*int size = input.size();
         *///?}
         NonNullList<ItemStack> remainders = NonNullList.withSize(size, ItemStack.EMPTY);
+        // Only the frame occupies the grid, so every slot is empty once it is consumed.
+        List<Integer> slots = new ArrayList<>();
+        List<ItemStack> returned = new ArrayList<>();
         for (int i = 0; i < size; i++) {
+            slots.add(i);
             ItemStack stack = input.getItem(i);
             if (stack.getItem() instanceof ProjectionFrameItem) {
-                var absorbed = ProjectionFrameData.read(stack);
-                for (int j = 0; j < absorbed.size(); j++) {
-                    remainders.set(j, absorbed.get(j).stack().copyWithCount(1));
-                }
-                break;
+                for (var absorbed : ProjectionFrameData.read(stack)) returned.add(absorbed.stack().copyWithCount(1));
             }
         }
+        CraftingGridContext.returnStacks(remainders, slots, returned, CraftingGridContext.player());
         return remainders;
     }
 
-    @Override public boolean canCraftInDimensions(int width, int height) { return width >= 3 && height >= 3; }
+    @Override public boolean canCraftInDimensions(int width, int height) { return width * height >= 1; }
     @Override public RecipeSerializer<?> getSerializer() { return AstralProcessRegistration.DISASSEMBLY_SERIALIZER.get(); }
 }

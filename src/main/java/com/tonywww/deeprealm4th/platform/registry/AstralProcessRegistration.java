@@ -3,6 +3,7 @@ package com.tonywww.deeprealm4th.platform.registry;
 import com.tonywww.deeprealm4th.DeepRealmTheForth;
 import com.tonywww.deeprealm4th.platform.recipe.CombinationForgingRecipe;
 import com.tonywww.deeprealm4th.platform.recipe.FrameDisassemblyRecipe;
+import com.tonywww.deeprealm4th.platform.recipe.ProjectionCraftingRecipe;
 import com.tonywww.deeprealm4th.platform.recipe.ProjectionRecipe;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
@@ -40,6 +41,9 @@ public final class AstralProcessRegistration {
     public static final Supplier<RecipeSerializer<FrameDisassemblyRecipe>> DISASSEMBLY_SERIALIZER =
             SERIALIZERS.register("frame_disassembly", () ->
                     new SimpleCraftingRecipeSerializer<>(FrameDisassemblyRecipe::new));
+    public static final Supplier<RecipeSerializer<ProjectionCraftingRecipe>> PROJECTION_CRAFTING_SERIALIZER =
+            SERIALIZERS.register("projection_crafting", () ->
+                    new SimpleCraftingRecipeSerializer<>(ProjectionCraftingRecipe::new));
 
     private AstralProcessRegistration() {}
 
