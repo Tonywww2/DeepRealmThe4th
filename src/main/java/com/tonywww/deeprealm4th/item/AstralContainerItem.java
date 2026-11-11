@@ -67,7 +67,11 @@ public class AstralContainerItem extends VersionedCurioItem {
 
     @Override
     public void onUnequip(SlotContext slotContext, ItemStack newStack, ItemStack stack) {
-        if (!slotContext.entity().level().isClientSide && newStack.getItem() != stack.getItem()) {
+        if (!slotContext.entity().level().isClientSide && newStack.getItem() != stack.getItem()
+                && slotContext.entity() instanceof Player player) {
+            // Curios also invokes this hook for same-item NBT changes (including our snapshot).
+            // Same-item replacements are detected by the live binding identity in refresh.
+            AstralCurioAttributes.invalidate(player);
             AstralCurioAttributes.clearSnapshot(stack);
         }
     }

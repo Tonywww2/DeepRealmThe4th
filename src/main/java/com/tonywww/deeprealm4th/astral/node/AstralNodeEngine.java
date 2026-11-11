@@ -1,6 +1,7 @@
 package com.tonywww.deeprealm4th.astral.node;
 
 import com.tonywww.deeprealm4th.astral.FillerContext;
+import com.tonywww.deeprealm4th.astral.AstralRuntime;
 import com.tonywww.deeprealm4th.astral.FillerDefinition;
 import com.tonywww.deeprealm4th.astral.ScoreType;
 import com.tonywww.deeprealm4th.astral.container.ContainerLayout;
@@ -49,7 +50,9 @@ public final class AstralNodeEngine {
         Map<Integer, FillerResult> finals = new LinkedHashMap<>();
         Map<Integer, ReadPlan> plans = new LinkedHashMap<>();
         List<String> errors = new ArrayList<>();
+        AstralRuntime.stage("intrinsic");
         for (Candidate candidate : candidates) {
+            AstralRuntime.readOnlyContract(candidate.definition().readOnlySnapshot());
             FillerNode node = candidate.node();
             FillerContext context = context(player, container, layout, snapshot, candidate.index(),
                     effective, initialViews, state, bases, finals, Set.of(), new ReadPlan.Inputs(Map.of(), Map.of()));
@@ -75,7 +78,9 @@ public final class AstralNodeEngine {
                     old.ruleKey(), old.role(), old.itemCopy(), old.instanceData()));
         }
         List<CellView> cellViews = List.copyOf(views);
+        AstralRuntime.stage("effective");
         for (Candidate candidate : candidates) {
+            AstralRuntime.readOnlyContract(candidate.definition().readOnlySnapshot());
             if ("intrinsic_error".equals(bases.get(candidate.index()).state())) continue;
             FillerContext context = context(player, container, layout, snapshot, candidate.index(),
                     effective, cellViews, state, bases, finals, Set.of(), new ReadPlan.Inputs(Map.of(), Map.of()));
@@ -88,6 +93,7 @@ public final class AstralNodeEngine {
             }
         }
         Map<Integer, Set<Integer>> dependencies = new HashMap<>();
+        Map<Integer, List<Integer>> dependents = new HashMap<>();
         for (Candidate candidate : candidates) {
             Set<Integer> needs = new HashSet<>();
             for (ReadPlan.Port port : plans.getOrDefault(candidate.index(), ReadPlan.empty()).ports()) {
@@ -95,6 +101,7 @@ public final class AstralNodeEngine {
                     for (int source : port.cells()) if (nodes.containsKey(source)) needs.add(source);
             }
             dependencies.put(candidate.index(), needs);
+            for (int source : needs) dependents.computeIfAbsent(source, key -> new ArrayList<>()).add(candidate.index());
         }
         PriorityQueue<Integer> ready = new PriorityQueue<>();
         for (int index : nodes.keySet()) if (dependencies.get(index).isEmpty()) ready.add(index);
@@ -103,7 +110,7 @@ public final class AstralNodeEngine {
             if (finals.containsKey(index)) continue;
             compute(nodes.get(index), plans.getOrDefault(index, ReadPlan.empty()), player, container,
                     layout, snapshot, effective, cellViews, state, bases, finals, errors, false);
-            for (int dependent : nodes.keySet()) {
+            for (int dependent : dependents.getOrDefault(index, List.of())) {
                 if (dependencies.get(dependent).remove(index) && dependencies.get(dependent).isEmpty())
                     ready.add(dependent);
             }
@@ -120,6 +127,7 @@ public final class AstralNodeEngine {
             ContainerLayout layout, List<ItemStack> snapshot, Set<Integer> effective, List<CellView> views,
             PlayerStateSnapshot state, Map<Integer, FillerResult> bases, Map<Integer, FillerResult> finals,
             List<String> errors, boolean cycle) {
+        AstralRuntime.readOnlyContract(candidate.definition().readOnlySnapshot());
         int index = candidate.index();
         FillerResult base = bases.get(index);
         if (!base.computed() && "intrinsic_error".equals(base.state())) {

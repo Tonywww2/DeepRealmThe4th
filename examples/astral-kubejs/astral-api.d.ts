@@ -56,7 +56,18 @@ declare namespace AstralGemAPI {
     hasUnlockTag(tag: string): boolean
   }
 
+  interface FillerDefinitionBuilder {
+    /** Opt in to frozen container input and read-only memo sharing during one round. */
+    readOnlySnapshot(): FillerDefinitionBuilder
+  }
+
   interface FillerContext {
+    /** Requires readOnlySnapshot. Stage memo is also isolated by source container. */
+    memoGet(key: string): unknown | null
+    memoPut(key: string, value: unknown): void
+    /** Whole-round memo deliberately spans stages. Store audited read-only values only. */
+    roundMemoGet(key: string): unknown | null
+    roundMemoPut(key: string, value: unknown): void
     filler(): unknown
     container(): unknown
     index(): number

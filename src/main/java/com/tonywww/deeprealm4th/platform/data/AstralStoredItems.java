@@ -1,6 +1,7 @@
 package com.tonywww.deeprealm4th.platform.data;
 
 import java.util.List;
+import com.tonywww.deeprealm4th.astral.score.AstralCurioAttributes;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 
@@ -84,6 +85,7 @@ public final class AstralStoredItems {
     //?}
 
     public static void write(ItemStack body, List<ItemStack> items) {
+        AstralCurioAttributes.contentChanged(body);
         NonNullList<ItemStack> copy = NonNullList.withSize(items.size(), ItemStack.EMPTY);
         for (int i = 0; i < items.size(); i++) {
             if (!items.get(i).isEmpty()) copy.set(i, items.get(i).copyWithCount(1));

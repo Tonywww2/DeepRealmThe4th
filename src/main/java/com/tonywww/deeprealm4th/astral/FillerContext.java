@@ -24,6 +24,10 @@ import net.minecraft.world.item.ItemStack;
 
 /** Read-only location and player context passed to Java or script-defined rules. */
 public final class FillerContext {
+    private final Object roundToken = AstralRuntime.roundToken();
+    private final boolean readOnlyMemo = AstralRuntime.readOnlyContract();
+    private final String memoStage = AstralRuntime.currentStage();
+    private final String memoNamespace;
     private final Player player;
     private final ItemStack container;
     private final ItemStack filler;
@@ -36,6 +40,24 @@ public final class FillerContext {
     private final Map<Integer, FillerResult> baseResults, finalResults;
     private final Set<Integer> allowedFinal;
     private final ReadPlan.Inputs inputs;
+
+    private record ResolverView(Set<Integer> effective, List<CellView> cells) {}
+
+    /** Engine entry point for definitions that explicitly accept frozen round input. */
+    public static FillerContext forResolver(Player player, ItemStack container, ItemStack filler,
+            ContainerLayout layout, List<ItemStack> contents, int index, PlayerStateSnapshot state) {
+        if (!AstralRuntime.readOnlyContract())
+            return new FillerContext(player, container, filler, layout, contents, index, state);
+        String scope = "internal/" + AstralRuntime.memoNamespace(container) + "/" + AstralRuntime.currentStage();
+        ResolverView view = (ResolverView) AstralRuntime.memoGet(scope, "resolver-views");
+        if (view == null) {
+            Set<Integer> effective = Set.copyOf(openCells(layout, contents));
+            view = new ResolverView(effective, defaultViews(layout, contents, effective));
+            AstralRuntime.memoPut(scope, "resolver-views", view);
+        }
+        return new FillerContext(player, container, filler, layout, contents, index, view.effective(),
+                view.cells(), state, Map.of(), Map.of(), Set.of(), new ReadPlan.Inputs(Map.of(), Map.of()));
+    }
 
     public FillerContext(Player player, ItemStack container, ItemStack filler,
             ContainerLayout layout, List<ItemStack> contents, int index) {
@@ -60,8 +82,9 @@ public final class FillerContext {
             ContainerLayout layout, List<ItemStack> contents, int index, Set<Integer> effectiveCells,
             List<CellView> views, PlayerStateSnapshot state, Map<Integer, FillerResult> bases,
             Map<Integer, FillerResult> finals, Set<Integer> allowedFinal, ReadPlan.Inputs inputs) {
+        this.memoNamespace = AstralRuntime.memoNamespace(container);
         this.player = Objects.requireNonNull(player, "player");
-        this.container = Objects.requireNonNull(container, "container").copy();
+        this.container = AstralRuntime.contextContainer(Objects.requireNonNull(container, "container"));
         this.filler = Objects.requireNonNull(filler, "filler").copy();
         this.layout = Objects.requireNonNull(layout, "layout");
         Objects.requireNonNull(contents, "contents");
@@ -81,6 +104,15 @@ public final class FillerContext {
         this.inputs = Objects.requireNonNull(inputs, "inputs");
     }
 
+    /** Memo values must be read-only and belong only to this calculation round. */
+    public Object memoGet(String key) { requireMemoContract(); return AstralRuntime.memoGet(memoNamespace + "/" + memoStage, key); }
+    public void memoPut(String key, Object value) { requireMemoContract(); AstralRuntime.memoPut(memoNamespace + "/" + memoStage, key, value); }
+    public Object roundMemoGet(String key) { requireMemoContract(); return AstralRuntime.memoGet("round", key); }
+    public void roundMemoPut(String key, Object value) { requireMemoContract(); AstralRuntime.memoPut("round", key, value); }
+    private void requireMemoContract() {
+        AstralRuntime.requireRound(roundToken);
+        if (!readOnlyMemo) throw new IllegalStateException("Memo requires readOnlySnapshot opt-in");
+    }
     public Player player() { return player; }
     public ItemStack container() { return container.copy(); }
     public ItemStack filler() { return filler.copy(); }
@@ -194,10 +226,16 @@ public final class FillerContext {
     int countAdjacentTag(TagKey<Item> tag) {
         int x = x();
         int y = y();
-        return (itemAt(x - 1, y).is(tag) ? 1 : 0)
-                + (itemAt(x + 1, y).is(tag) ? 1 : 0)
-                + (itemAt(x, y - 1).is(tag) ? 1 : 0)
-                + (itemAt(x, y + 1).is(tag) ? 1 : 0);
+        return (hasTag(x - 1, y, tag) ? 1 : 0)
+                + (hasTag(x + 1, y, tag) ? 1 : 0)
+                + (hasTag(x, y - 1, tag) ? 1 : 0)
+                + (hasTag(x, y + 1, tag) ? 1 : 0);
+    }
+
+    private boolean hasTag(int x, int y, TagKey<Item> tag) {
+        if (!layout.isOpen(x, y)) return false;
+        int cell = y * layout.width() + x;
+        return effectiveCells.contains(cell) && contents.get(cell).is(tag);
     }
 
     private static Set<Integer> openCells(ContainerLayout layout, List<ItemStack> contents) {

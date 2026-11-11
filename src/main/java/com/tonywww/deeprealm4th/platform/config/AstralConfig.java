@@ -16,12 +16,14 @@ import net.minecraftforge.common.ForgeConfigSpec;
 public final class AstralConfig {
     //? if forge {
     public static final ForgeConfigSpec SPEC;
+    private static final ForgeConfigSpec.IntValue RECALCULATION_INTERVAL;
     private static final ForgeConfigSpec.IntValue BASE_WIDTH;
     private static final ForgeConfigSpec.IntValue BASE_HEIGHT;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> BASE_ROWS;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> VOID_ENTRY_DIMENSIONS;
     //?} else {
     /*public static final ModConfigSpec SPEC;
+    private static final ModConfigSpec.IntValue RECALCULATION_INTERVAL;
     private static final ModConfigSpec.IntValue BASE_WIDTH;
     private static final ModConfigSpec.IntValue BASE_HEIGHT;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> BASE_ROWS;
@@ -34,6 +36,8 @@ public final class AstralConfig {
         //?} else {
         /*ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
         *///?}
+        RECALCULATION_INTERVAL = builder.comment("Ticks between equipment and menu score calculations. 1 restores every-tick evaluation.")
+                .defineInRange("calculation.interval_ticks", 5, 1, 1200);
         BASE_WIDTH = builder.comment("Base astral body grid width; layout rows must match.")
                 .defineInRange("base_container.width", ContainerLayout.BASE_WIDTH, 1, 64);
         BASE_HEIGHT = builder.comment("Base astral body grid height; layout row count must match.")
@@ -53,6 +57,8 @@ public final class AstralConfig {
     }
 
     private AstralConfig() {}
+
+    public static int recalculationInterval() { return RECALCULATION_INTERVAL.get(); }
 
     public static ContainerLayout baseLayout() {
         return ContainerLayout.parse(BASE_WIDTH.get(), BASE_HEIGHT.get(),

@@ -43,12 +43,19 @@ public final class AstralPlayerEffectGroups {
                         || !group.equals(definition.effectGroup())
                         || definition.suppressedBy().stream().anyMatch(present::contains)) continue;
                 if (definition.nodeResolver() != null) {
+                    boolean previousContract = AstralRuntime.readOnlyContract();
+                    String previousStage = AstralRuntime.currentStage();
                     try {
+                        AstralRuntime.readOnlyContract(definition.readOnlySnapshot());
+                        AstralRuntime.stage("group-resolve");
                         var node = definition.nodeResolver().resolve(new FillerContext(player,
                                 equipped.stack(), stack, layout, contents, i));
                         if (node == null || !node.valid()) continue;
                     } catch (RuntimeException ignored) {
                         continue;
+                    } finally {
+                        AstralRuntime.readOnlyContract(previousContract);
+                        AstralRuntime.stage(previousStage);
                     }
                 }
                 return true;

@@ -4,9 +4,12 @@ import com.tonywww.deeprealm4th.astral.container.ContainerLayout;
 import com.tonywww.deeprealm4th.astral.score.AstralCurioAttributes;
 import com.tonywww.deeprealm4th.astral.score.AstralScoreEngine;
 import com.tonywww.deeprealm4th.item.AstralContainerItem;
-import com.tonywww.deeprealm4th.platform.curios.AstralEquippedContainers;
 import com.tonywww.deeprealm4th.platform.data.AstralStoredItems;
 import java.util.function.UnaryOperator;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Objects;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -14,24 +17,65 @@ import net.minecraft.core.registries.BuiltInRegistries;
 
 /** Server-side cell editing and explicit invalidation for script and Java processors. */
 public final class AstralRuntime {
-    private static final ThreadLocal<Boolean> CALCULATING = ThreadLocal.withInitial(() -> false);
+    private static final ThreadLocal<Round> ROUND = new ThreadLocal<>();
+
+    private static final class Round {
+        final Object token = new Object();
+        final IdentityHashMap<ItemStack, Integer> namespaces = new IdentityHashMap<>();
+        final Map<String, Object> memo = new HashMap<>();
+        final IdentityHashMap<ItemStack, ItemStack> containers = new IdentityHashMap<>();
+        String stage = "resolve";
+        boolean readOnly;
+    }
+
+    public static Object roundToken() { return ROUND.get() == null ? null : ROUND.get().token; }
+    public static void requireRound(Object token) {
+        if (token == null || (ROUND.get() == null || token != ROUND.get().token)) throw new IllegalStateException("Calculation round has ended");
+    }
+    public static void stage(String stage) { if (ROUND.get() != null) ROUND.get().stage = stage; }
+    public static void readOnlyContract(boolean enabled) { if (ROUND.get() != null) ROUND.get().readOnly = enabled; }
+    public static boolean readOnlyContract() { return ROUND.get() != null && ROUND.get().readOnly; }
+    public static String currentStage() { return ROUND.get() == null ? "outside" : ROUND.get().stage; }
+    public static String memoNamespace(ItemStack container) {
+        Round round = ROUND.get();
+        return round == null ? "outside" : String.valueOf(round.namespaces.computeIfAbsent(container, key -> round.namespaces.size()));
+    }
+    public static void freezeContainer(ItemStack container) { ROUND.get().containers.put(container, container.copy()); }
+    static ItemStack contextContainer(ItemStack container) {
+        Round round = ROUND.get();
+        return round != null && round.readOnly
+                ? round.containers.computeIfAbsent(container, ItemStack::copy) : container.copy();
+    }
+    public static Object memoGet(String stage, String key) {
+        Round round = ROUND.get();
+        return round == null ? null : round.memo.get(stage + "\0" + key);
+    }
+    public static void memoPut(String stage, String key, Object value) {
+        Round round = ROUND.get();
+        if (round == null) throw new IllegalStateException("Calculation round has ended");
+        round.memo.put(stage + "\0" + key, Objects.requireNonNull(value));
+    }
     private AstralRuntime() {}
 
-    public static boolean calculating() { return CALCULATING.get(); }
+    public static boolean calculating() { return ROUND.get() != null; }
     public static void beginCalculation() {
         if (calculating()) throw new IllegalStateException("Astral calculation reentered");
-        CALCULATING.set(true);
+        ROUND.set(new Round());
     }
-    public static void endCalculation() { CALCULATING.set(false); }
+    public static void endCalculation() {
+        Round round = ROUND.get();
+        if (round != null) { round.memo.clear(); round.containers.clear(); round.namespaces.clear(); }
+        ROUND.remove();
+    }
 
     public static void invalidate(Player player) {
         requireServer(player);
-        for (AstralEquippedContainers.Equipped equipped : AstralEquippedContainers.list(player))
-            AstralCurioAttributes.clearSnapshot(equipped.stack());
+        AstralCurioAttributes.invalidate(player);
     }
     public static void invalidate(Player player, ItemStack container) {
         requireServer(player);
-        AstralCurioAttributes.clearSnapshot(container);
+        AstralCurioAttributes.contentChanged(container);
+        AstralCurioAttributes.invalidate(player);
     }
 
     public static ItemStack updateCell(Player player, ItemStack container, int index,

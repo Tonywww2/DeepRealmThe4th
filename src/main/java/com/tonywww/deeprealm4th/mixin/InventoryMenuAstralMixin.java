@@ -17,16 +17,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(AbstractContainerMenu.class)
 public abstract class InventoryMenuAstralMixin {
     @Inject(method = "clicked", at = @At("HEAD"), cancellable = true)
-    private void deepRealm$openAstral(int slotId, int button, ClickType clickType,
-                                      Player player, CallbackInfo ci) {
+    private void deepRealm$rightClickSlot(int slotId, int button, ClickType clickType,
+                                          Player player, CallbackInfo ci) {
         if (clickType != ClickType.PICKUP || button != 1 || slotId < 0) return;
         AbstractContainerMenu self = (AbstractContainerMenu) (Object) this;
-        if (!(self instanceof InventoryMenu)) return;
         if (slotId >= self.slots.size()) return;
+        // Projection stacking works in every container; opening an astral container stays inventory-only.
         if (ProjectionInventoryClick.handle(self, slotId, player)) {
             ci.cancel();
             return;
         }
+        if (!(self instanceof InventoryMenu)) return;
         if (!player.containerMenu.getCarried().isEmpty()) return;
         Slot slot = self.getSlot(slotId);
         if (slot.container != player.getInventory()

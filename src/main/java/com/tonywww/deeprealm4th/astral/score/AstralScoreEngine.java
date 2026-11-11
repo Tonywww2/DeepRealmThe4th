@@ -42,6 +42,7 @@ public final class AstralScoreEngine {
             throw new IllegalArgumentException("Container contents do not match layout dimensions");
         AstralRuntime.beginCalculation();
         try {
+            AstralRuntime.freezeContainer(container);
             List<ItemStack> snapshot = contents.stream().map(ItemStack::copy).toList();
             PlayerStateSnapshot state = PlayerStateSnapshot.capture(player);
             List<AstralNodeEngine.Candidate> nodes = new ArrayList<>();
@@ -81,9 +82,10 @@ public final class AstralScoreEngine {
                     continue;
                 }
                 try {
+                    AstralRuntime.readOnlyContract(definition.readOnlySnapshot());
                     FillerNode node = definition.nodeResolver() == null
                             ? StaticFillerNodes.resolve(itemId, definition)
-                            : definition.nodeResolver().resolve(new FillerContext(player,
+                            : definition.nodeResolver().resolve(FillerContext.forResolver(player,
                                     container, stack, layout, snapshot, i, state));
                     if (node == null || !node.valid()) {
                         inactive.put(i, InactiveReason.INVALID);
@@ -114,9 +116,12 @@ public final class AstralScoreEngine {
             for (var entry : round.cells().entrySet())
                 if (entry.getValue().computed()) allEffective.add(entry.getKey());
             Map<AstralAttributeKey, Double> attributes = new LinkedHashMap<>();
+            AstralRuntime.stage("medal");
             for (AstralNodeEngine.Candidate node : nodes) {
                 FillerResult result = round.cells().get(node.index());
-                if (result == null || !result.computed()) continue;
+                if (result == null || !result.computed()
+                        || node.definition().medalRules().isEmpty() && node.definition().bigMedalRules().isEmpty()) continue;
+                AstralRuntime.readOnlyContract(node.definition().readOnlySnapshot());
                 FillerContext context = new FillerContext(player, container, snapshot.get(node.index()), layout,
                         snapshot, node.index(), allEffective, round.views(), round.state(),
                         round.cells(), round.cells(), allEffective, new ReadPlan.Inputs(Map.of(), Map.of()));

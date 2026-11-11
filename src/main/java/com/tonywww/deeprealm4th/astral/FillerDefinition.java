@@ -12,6 +12,7 @@ import java.util.Set;
 
 /** Rules contributed by one item occupying one open container cell. */
 public final class FillerDefinition {
+    private final boolean readOnlySnapshot;
     private final ScoreSheet baseScores;
     private final List<ScoreRule> bonusRules;
     private final List<ScoreRule> conversionRules;
@@ -24,6 +25,7 @@ public final class FillerDefinition {
     private final EffectScope effectScope;
 
     private FillerDefinition(Builder builder) {
+        this.readOnlySnapshot = builder.readOnlySnapshot;
         this.baseScores = ScoreSheet.of(builder.baseScores);
         this.bonusRules = List.copyOf(builder.bonusRules);
         this.conversionRules = List.copyOf(builder.conversionRules);
@@ -64,6 +66,8 @@ public final class FillerDefinition {
     public Set<String> suppressedBy() {
         return suppressedBy;
     }
+
+    public boolean readOnlySnapshot() { return readOnlySnapshot; }
 
     public NodeResolver nodeResolver() { return nodeResolver; }
     public List<BigMedalRule> bigMedalRules() { return bigMedalRules; }
@@ -123,7 +127,15 @@ public final class FillerDefinition {
         private String effectGroup = "";
         private EffectScope effectScope = EffectScope.CONTAINER;
 
+        private boolean readOnlySnapshot;
+
         private Builder() {}
+
+        /** Opt in to round-frozen container input and read-only script memo values. */
+        public Builder readOnlySnapshot() {
+            readOnlySnapshot = true;
+            return this;
+        }
 
         public Builder base(ScoreType type, double amount) {
             Objects.requireNonNull(type, "type");

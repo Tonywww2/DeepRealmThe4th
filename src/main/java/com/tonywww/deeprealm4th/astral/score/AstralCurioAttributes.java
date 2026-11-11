@@ -8,6 +8,11 @@ import com.tonywww.deeprealm4th.astral.node.FillerResultSummary;
 import com.tonywww.deeprealm4th.item.AstralContainerItem;
 import com.tonywww.deeprealm4th.platform.curios.CurioAttributePlatform;
 import com.tonywww.deeprealm4th.platform.data.AstralStoredItems;
+import com.tonywww.deeprealm4th.platform.config.AstralConfig;
+import com.tonywww.deeprealm4th.platform.curios.AstralEquippedContainers;
+import java.lang.ref.WeakReference;
+import java.util.WeakHashMap;
+import net.minecraft.world.level.Level;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -25,11 +30,72 @@ import top.theillusivec4.curios.api.SlotContext;
 public final class AstralCurioAttributes {
     private static final String SNAPSHOT_KEY = "AstralAttributeBonuses";
 
+    // Weak session keys and weak stack bindings never retain a player or world after logout.
+    private static final Map<Player, Session> SESSIONS = new WeakHashMap<>();
+    private static final Map<ItemStack, Long> REVISIONS = new WeakHashMap<>();
+    private static long nextRevision;
+    private static final class Binding {
+        final WeakReference<ItemStack> stack;
+        final long revision;
+        long calculated = Long.MIN_VALUE;
+        Binding(ItemStack stack) { this.stack = new WeakReference<>(stack); revision = revision(stack); }
+    }
+    private static final class Session {
+        Map<String, Binding> bindings = new HashMap<>();
+        WeakReference<Level> level = new WeakReference<>(null);
+        long invalidation;
+    }
+
     private AstralCurioAttributes() {}
+
+    public static synchronized long revision(ItemStack body) { return REVISIONS.getOrDefault(body, 0L); }
+    public static synchronized void contentChanged(ItemStack body) { REVISIONS.put(body, ++nextRevision); }
+    public static void invalidate(Player player) {
+        Session session = SESSIONS.computeIfAbsent(player, ignored -> new Session());
+        session.invalidation++;
+        session.bindings.values().forEach(binding -> binding.calculated = Long.MIN_VALUE);
+    }
+
+    public static long invalidationRevision(Player player) {
+        Session session = SESSIONS.get(player);
+        return session == null ? 0 : session.invalidation;
+    }
+
+    private static Binding binding(Player player, String slot, int index, ItemStack body) {
+        Session session = SESSIONS.computeIfAbsent(player, ignored -> new Session());
+        Map<String, Binding> current = new HashMap<>();
+        boolean changed = session.level.get() != player.level();
+        session.level = new WeakReference<>(player.level());
+        for (var equipped : AstralEquippedContainers.list(player)) {
+            String key = equipped.slot() + "/" + equipped.index();
+            Binding old = session.bindings.get(key);
+            if (old == null || old.stack.get() != equipped.stack() || old.revision != revision(equipped.stack())) {
+                old = new Binding(equipped.stack());
+                changed = true;
+            }
+            current.put(key, old);
+        }
+        changed |= !current.keySet().equals(session.bindings.keySet());
+        if (changed) current.values().forEach(value -> value.calculated = Long.MIN_VALUE);
+        session.bindings = current;
+        String key = slot + "/" + index;
+        // Curios can call the tick hook while its binding is being installed.
+        Binding binding = current.get(key);
+        if (binding == null || binding.stack.get() != body) {
+            binding = new Binding(body);
+            current.put(key, binding);
+        }
+        return binding;
+    }
 
     public static void refresh(SlotContext slot, ItemStack body) {
         if (!(slot.entity() instanceof Player player) || player.level().isClientSide
                 || !(body.getItem() instanceof AstralContainerItem item)) return;
+        Binding binding = binding(player, slot.identifier(), slot.index(), body);
+        long now = player.level().getGameTime();
+        if (binding.calculated != Long.MIN_VALUE && now >= binding.calculated
+                && now - binding.calculated < AstralConfig.recalculationInterval()) return;
+        long invalidation = invalidationRevision(player);
         ContainerLayout layout = item.layout(body);
         AstralScoreEngine.Result result = AstralScoreEngine.calculateEquipped(player, body, layout,
                 AstralStoredItems.read(body, layout.size()), slot.identifier(), slot.index());
@@ -43,6 +109,7 @@ public final class AstralCurioAttributes {
                 || !summaries.equals(nodeSnapshot(body))) {
             writeSnapshot(body, active, result.scores(), summaries);
         }
+        if (invalidation == invalidationRevision(player)) binding.calculated = now;
     }
 
     public static Map<AstralAttributeKey, Double> bonuses(SlotContext slot, ItemStack body) {

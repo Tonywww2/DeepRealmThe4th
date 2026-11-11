@@ -5,6 +5,8 @@ import com.tonywww.deeprealm4th.astral.ScoreType;
 import com.tonywww.deeprealm4th.astral.container.AstralInventory;
 import com.tonywww.deeprealm4th.astral.container.ContainerLayout;
 import com.tonywww.deeprealm4th.astral.score.AstralScoreEngine;
+import com.tonywww.deeprealm4th.astral.score.AstralCurioAttributes;
+import com.tonywww.deeprealm4th.platform.config.AstralConfig;
 import com.tonywww.deeprealm4th.astral.score.ScoreSheet;
 
 import com.tonywww.deeprealm4th.astral.content.AstralItemCatalog;
@@ -22,6 +24,9 @@ import net.minecraft.world.item.ItemStack;
 
 /** A menu bound to the exact ItemStack that was opened, rather than to an item type. */
 public final class AstralMenu extends AbstractContainerMenu {
+    private long calculated = Long.MIN_VALUE;
+    private long contentRevision = -1;
+    private long invalidationRevision = -1;
     private final AstralInventory cells;
     private final int ownerSlot;
     private final int cellCount;
@@ -137,10 +142,19 @@ public final class AstralMenu extends AbstractContainerMenu {
 
     @Override
     public void broadcastChanges() {
-        if (!viewer.level().isClientSide) {
+        long now = viewer.level().getGameTime();
+        long revision = AstralCurioAttributes.revision(cells.owner());
+        long invalidation = viewer.level().isClientSide ? 0
+                : AstralCurioAttributes.invalidationRevision(viewer);
+        if (!viewer.level().isClientSide && (calculated == Long.MIN_VALUE || now < calculated
+                || now - calculated >= AstralConfig.recalculationInterval()
+                || revision != contentRevision || invalidation != invalidationRevision)) {
             List<ItemStack> contents = new ArrayList<>(cellCount);
             for (int i = 0; i < cellCount; i++) contents.add(cells.getItem(i));
             AstralScoreEngine.Result result = AstralScoreEngine.calculate(viewer, cells.owner(), layout(), contents);
+            calculated = now;
+            contentRevision = revision;
+            invalidationRevision = invalidation;
             ScoreSheet scores = result.scores();
             for (ScoreType type : ScoreType.values()) {
                 long bits = Double.doubleToRawLongBits(scores.get(type));
